@@ -13,6 +13,7 @@
   --spot: #3a434e;
   --hist: #9b7cf0;
   --warn: #ff6b5b;
+  --enemy: #ff6b5b;
   --up: #7cc4ff;
   --down: #ff9f6b;
   --ok: #3ddc84;
@@ -119,6 +120,14 @@ canvas {
 .sw.opening { background: var(--opening); }
 .sw.gone { background: var(--gone); }
 .sw.me { background: var(--me); border-radius: 50%; }
+.sw.enemy { background: var(--enemy); transform: rotate(45deg); border-radius: 0; }
+.enemy-section { display: flex; flex-direction: column; max-height: 48%; min-height: 100px; border-bottom: 1px solid var(--line); }
+.enemy-section .list { flex-shrink: 1; }
+.enemy-card { border: 1px solid var(--line); border-left: 4px solid var(--enemy); border-radius: 8px; padding: 8px 10px; background: var(--panel-2); }
+.enemy-card.stale { border-left-color: var(--muted); }
+.enemy-card strong { color: var(--enemy); }
+.enemy-card .enemy-meta, .rank-note { color: var(--muted); font-size: 12px; }
+.rank-note { padding: 0 14px; margin: 0 0 8px; }
 .sw.spot { background: var(--spot); border-radius: 50%; }
 .sw.hist { background: var(--hist); border-radius: 50%; opacity: .7; }
 .tri { font-style: normal; font-size: 11px; margin-right: 4px; color: var(--visible); }

@@ -14,6 +14,9 @@ internal sealed class RadarSettings
     private string _path = "";
 
     public string? North { get; set; }
+    /// <summary>Auto uses self identity; manual selection works when starting mid-session.</summary>
+    public string OwnFaction { get; set; } = "Auto";
+    public bool ShowEnemies { get; set; } = true;
     public int? OverlayX { get; set; }
     public int? OverlayY { get; set; }
     public bool OverlayVisible { get; set; } = true;

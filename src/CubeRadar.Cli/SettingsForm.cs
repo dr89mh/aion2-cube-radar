@@ -11,7 +11,9 @@ internal sealed record OverlayActions(
     Func<string> GetNorth,
     Action<string> SetNorth,
     Action OpenCaptures,
-    Updater? Updater = null);
+    Updater? Updater = null,
+    Func<string>? GetFaction = null,
+    Action<string>? SetFaction = null);
 
 /// <summary>
 /// Settings opened from the overlay's gear button (or the tray). Every change applies at once and is saved; there is
@@ -124,6 +126,22 @@ internal sealed class SettingsForm : Form
         var clear = Btn("Standard-Piepton");
         clear.Click += (_, _) => { settings.SoundFile = null; file.Text = ""; Save(); };
         Row("Eigene .wav (optional)", Flow(file, browse, clear));
+
+        Section("Gegner");
+        var enemies = Check("Gegner mit Fraktion und PvP-Rang anzeigen", settings.ShowEnemies);
+        enemies.CheckedChanged += (_, _) => { settings.ShowEnemies = enemies.Checked; Save(); };
+        Full(enemies);
+        if (actions.SetFaction is { } setFaction)
+        {
+            string[] values = ["Auto", "Elyos", "Asmodian"];
+            var faction = Combo(["Automatisch (eigener Charakter)", "Elyos", "Asmodier"],
+                Math.Max(0, Array.IndexOf(values, actions.GetFaction?.Invoke() ?? settings.OwnFaction)));
+            faction.SelectedIndexChanged += (_, _) => setFaction(values[faction.SelectedIndex]);
+            Row("Eigene Fraktion", faction);
+        }
+        Full(new Label { Text = "Nur sicher zugeordnete Gegner. Rang 19/17 per Screenshot beobachtet; * = angenommene Rangfolge. " +
+                                "Bei Start mitten in der Sitzung ggf. eigene Fraktion wählen.",
+            AutoSize = true, ForeColor = Muted, MaximumSize = new Size(420, 0), Margin = new Padding(0, 0, 0, 4) });
 
         // ---- overlay look
         Section("Overlay");

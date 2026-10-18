@@ -12,7 +12,14 @@
     "pos_buff_a":     "2a38",
     "pos_buff_b":     "2b38",
     "pos_cast":       "0238",
-    "pos_target":     "0e38"
+    "pos_target":     "0e38",
+    "player_info":    "4536",
+    "player_removed": "4736",
+    "player_killed":  "048d",
+    "player_position": "1a37",
+    "player_move":    "1b37",
+    "player_move_alt": "1c37",
+    "player_move_velocity": "2937"
   },
   "self_id_opcodes": ["4a36", "4437", "4637", "038d", "028d", "338a"],
   "self_check": [

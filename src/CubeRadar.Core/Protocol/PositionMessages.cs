@@ -16,6 +16,8 @@ public enum PositionKind : byte
     MapLoad,
     /// <summary><c>23 36</c>: own position after a teleport.</summary>
     Teleport,
+    /// <summary>Absolute/movement record for another player (never used as our own fix).</summary>
+    OtherPlayer,
 }
 
 /// <summary>A world position of one entity taken from a record that names it.</summary>

@@ -74,6 +74,7 @@ int Usage()
         cuberadar radar [options]                  live Hidden Cube radar on http://127.0.0.1:5313
             --port N           web port (default 5313)
             --device NAME      force an Npcap adapter
+            --faction NAME     own faction: Auto, Elyos or Asmodian (saved; also in settings)
             --replay FILE      feed a recorded .pcap/.pcapng instead of live capture
             --speed X          replay speed factor (default 1; 0 = as fast as possible)
             --stop-at S        stop feeding the replay S seconds into the capture (inspect that moment)
@@ -247,4 +248,3 @@ static string? Opt(string[] a, string name) =>
     Array.IndexOf(a, name) is var i and >= 0 && i + 1 < a.Length ? a[i + 1] : null;
 
 static void Log(string message) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
-

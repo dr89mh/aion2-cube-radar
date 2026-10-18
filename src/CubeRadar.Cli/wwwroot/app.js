@@ -12,13 +12,14 @@ const STATUS_TEXT = {
   Gone: "weg",
 };
 const COLORS = {};
-for (const k of ["visible", "out", "opening", "gone", "me", "spot", "hist", "text", "muted", "line"])
+for (const k of ["visible", "out", "opening", "gone", "me", "spot", "hist", "text", "muted", "line", "enemy"])
   COLORS[k] = getComputedStyle(document.documentElement).getPropertyValue("--" + k).trim();
 
 const ui = {
   mode: localStorage.getItem("mode") || "radar",
   range: Number(localStorage.getItem("range") || 200),
   sound: false,
+  enemies: localStorage.getItem("enemies") !== "0",
   notify: localStorage.getItem("notify") === "1" && "Notification" in window && Notification.permission === "granted",
 };
 let msg = null;            // last pushed state
@@ -57,8 +58,11 @@ function onState() {
   if (r.zone && r.zone !== spotsZone) loadZone(r.zone);
   const sel = document.getElementById("north");
   if (document.activeElement !== sel) sel.value = r.orientation.north;
+  const faction = document.getElementById("faction");
+  if (document.activeElement !== faction) faction.value = r.factionSetting || "Auto";
   renderHeader();
   renderList(fresh);
+  renderEnemies();
   draw();
 }
 
@@ -125,6 +129,31 @@ function fmtAge(ms) {
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")} h`;
 }
 const fmtNum = (v) => Math.round(v).toLocaleString("de-DE");
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const factionName = (v) => ({ Elyos: "Elyos", Asmodian: "Asmodier" })[v] || "unbekannt";
+const enemies = () => ui.enemies ? (msg.radar.players || []).filter((p) => p.isEnemy === true) : [];
+
+function rankText(p) {
+  const text = p.rankName || (p.rankCode != null ? `Rang-Code ${p.rankCode}` : "Rang unbekannt");
+  return text + (p.rankCode != null && !p.rankVerified ? " *" : "");
+}
+
+function renderEnemies() {
+  const r = msg.radar, list = enemies();
+  const unknown = (r.players || []).filter((p) => p.isEnemy == null).length;
+  document.getElementById("enemy-count").textContent = `(${list.length})`;
+  const empty = document.getElementById("enemy-empty");
+  empty.hidden = list.length > 0;
+  empty.textContent = !ui.enemies ? "Gegneranzeige ausgeschaltet."
+    : r.ownFaction === "Unknown" ? "Eigene Fraktion noch unbekannt – oben bei ‘Ich spiele’ wählen."
+    : `Keine zugeordneten Gegner in Sicht.${unknown ? ` ${unknown} Spieler mit unbekannter Fraktion.` : ""}`;
+  document.getElementById("enemy-list").innerHTML = list.map((p) => {
+    const distance = p.distanceM != null ? `${p.distanceEstimated ? "≈ " : ""}${fmtNum(p.distanceM)} m ${p.compass || ""}` : "Position noch unbekannt";
+    const age = p.positionAgeMs != null ? ` · Position vor ${fmtAge(p.positionAgeMs)}` : "";
+    return `<li class="enemy-card${p.positionStale ? " stale" : ""}"><strong>${esc(p.name)}</strong> · ${esc(factionName(p.faction))}
+      <div>${esc(rankText(p))}</div><div class="enemy-meta">${esc(distance + age)}${p.positionStale ? " · nicht frisch" : ""}</div></li>`;
+  }).join("");
+}
 
 // ------------------------------------------------------------------ header and list
 
@@ -147,6 +176,7 @@ function renderHeader() {
       `${c.status || ""} ${c.device || ""} · ${c.packets} Pakete${c.npcapDropped ? ` · ${c.npcapDropped} verworfen` : ""}`),
     chip(r.zone ? "ok" : "mid", "Zone", r.zone || "?", r.mapId ? `Map-ID ${r.mapId}` : "Map-ID unbekannt (kommt beim Zonenwechsel)"),
     chip(r.selfId ? "ok" : "bad", "Ich", r.selfId ?? "?", "eigene Entity-ID"),
+    chip(r.ownFaction && r.ownFaction !== "Unknown" ? "ok" : "mid", "Fraktion", factionName(r.ownFaction)),
     chip(posCls, "Position", posVal, m ? `Quelle: ${m.src}` : "noch keine Positionsmeldung (Buff wirken hilft)"),
   ].join("");
   const w = document.getElementById("warnings");
@@ -217,11 +247,12 @@ function draw() {
   const full = w;
   w -= STRIP; // the height strip takes the right edge
   let center, scale;
-  if (ui.mode === "radar" && (m || r.cubes.length)) {
-    center = m || avg(r.cubes);
+  const positionedEnemies = enemies().filter((p) => p.x != null && p.y != null && !p.positionStale);
+  if (ui.mode === "radar" && (m || r.cubes.length || positionedEnemies.length)) {
+    center = m || avg([...r.cubes, ...positionedEnemies]);
     scale = (Math.min(w, h) / 2 - 24) / (ui.range * 100);
   } else {
-    const pts = [...r.cubes, ...r.trail.filter((p) => p.length === 2).map((p) => ({ x: p[0], y: p[1] })), ...(m ? [m] : [])];
+    const pts = [...r.cubes, ...positionedEnemies, ...r.trail.filter((p) => p.length === 2).map((p) => ({ x: p[0], y: p[1] })), ...(m ? [m] : [])];
     const fit = pts.length ? pts : zoneSpots;
     if (!fit.length) return drawText(w / 2, h / 2, "Noch keine Daten", COLORS.muted, "center");
     const ns = fit.map((p) => p.x * o.nx + p.y * o.ny), es = fit.map((p) => p.x * o.ex + p.y * o.ey);
@@ -322,6 +353,23 @@ function draw() {
     if (rp) drawText(x + 11, y - 8, `${fmtNum(rp.dist / 100)} m${hs ? " · " + hs : ""}`, color);
   }
 
+  const enemyLabels = [];
+  for (const p of positionedEnemies) {
+    let [x, y] = toScreen(p);
+    if (ui.mode === "radar") {
+      const dx = x - w / 2, dy = y - h / 2;
+      const k = Math.max(1, Math.abs(dx) / (w / 2 - 18), Math.abs(dy) / (h / 2 - 18));
+      x = w / 2 + dx / k; y = h / 2 + dy / k;
+    }
+    ctx.fillStyle = COLORS.enemy;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 7); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 7, y); ctx.closePath(); ctx.fill();
+    // Avoid unreadable stacks for crowded contacts; their complete details remain in the list.
+    if (!enemyLabels.some(([lx, ly]) => Math.abs(lx - x) < 240 && Math.abs(ly - y) < 16)) {
+      drawText(x + 10, y - 8, `${p.name} · ${p.distanceM != null ? (p.distanceEstimated ? "≈" : "") + fmtNum(p.distanceM) + " m · " : ""}${rankText(p)}`, COLORS.enemy);
+      enemyLabels.push([x, y]);
+    }
+  }
   drawHeightStrip(full, h, r, m);
 }
 
@@ -454,6 +502,9 @@ function syncControls() {
   const n = document.getElementById("notify");
   n.textContent = ui.notify ? "Hinweise an" : "Hinweise aus";
   n.classList.toggle("on", ui.notify);
+  const e = document.getElementById("enemies");
+  e.textContent = ui.enemies ? "Gegner an" : "Gegner aus";
+  e.classList.toggle("on", ui.enemies);
 }
 
 document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
@@ -472,6 +523,17 @@ document.getElementById("north").addEventListener("change", async (e) => {
   e.target.blur();
 });
 localStorage.removeItem("north"); // older versions kept it per browser
+document.getElementById("faction").addEventListener("change", async (e) => {
+  const result = await fetch("/api/faction", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ faction: e.target.value }) });
+  if (!result.ok) console.error("Fraktionswechsel fehlgeschlagen", await result.text());
+  e.target.blur();
+});
+document.getElementById("enemies").addEventListener("click", () => {
+  ui.enemies = !ui.enemies;
+  localStorage.setItem("enemies", ui.enemies ? "1" : "0");
+  syncControls();
+  if (msg) { renderEnemies(); draw(); }
+});
 document.getElementById("sound").addEventListener("click", () => {
   ui.sound = !ui.sound;
   if (ui.sound && !audio) audio = new AudioContext();

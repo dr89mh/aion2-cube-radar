@@ -132,7 +132,7 @@ internal sealed class OverlayWindow : Form
     /// <summary>Re-reads size and opacity (called after every change in the settings window).</summary>
     public void ApplySettings()
     {
-        Size = OverlayRenderer.Measure(RenderScale);
+        Size = OverlayRenderer.Measure(RenderScale, _settings.ShowEnemies);
         Opacity = Math.Clamp(_settings.OverlayOpacityPct, 40, 100) / 100.0;
         Invalidate();
     }
@@ -372,7 +372,7 @@ internal sealed class OverlayWindow : Form
     }
 
     protected override void OnPaint(PaintEventArgs e) =>
-        OverlayRenderer.Render(e.Graphics, ClientSize, _last, RenderScale, _settings.OverlayRangeM);
+        OverlayRenderer.Render(e.Graphics, ClientSize, _last, RenderScale, _settings.OverlayRangeM, _settings.ShowEnemies);
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
@@ -423,16 +423,17 @@ internal static class Palette
 /// <summary>Draws the mini radar; also used to render a PNG for checking the layout.</summary>
 internal static class OverlayRenderer
 {
-    private const float Side = 230, Header = 22, Margin = 14;
+    private const float Side = 230, Header = 22, Margin = 14, EnemyFooter = 104;
     private const double LevelMetres = 3, SendRadiusM = 100;
 
-    public static Size Measure(float scale) => new((int)(Side * scale), (int)((Side + Header) * scale));
+    public static Size Measure(float scale, bool showEnemies = true) =>
+        new((int)(Side * scale), (int)((Side + Header + (showEnemies ? EnemyFooter : 0)) * scale));
 
     /// <summary>The settings button in the header, in client pixels.</summary>
     public static Rectangle GearRect(float scale) =>
         Rectangle.Round(new RectangleF((Side - 24) * scale, 1 * scale, 22 * scale, Header * scale - 2 * scale));
 
-    public static void Render(Graphics g, Size size, RadarSnapshot? s, float scale, int rangeM)
+    public static void Render(Graphics g, Size size, RadarSnapshot? s, float scale, int rangeM, bool showEnemies = true)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
@@ -444,7 +445,7 @@ internal static class OverlayRenderer
         using var tiny = new Font("Segoe UI", 7f, FontStyle.Regular, GraphicsUnit.Point);
 
         using (var border = new Pen(Palette.Line, 1))
-            g.DrawRectangle(border, 0.5f, 0.5f, Side - 1, Side + Header - 1);
+            g.DrawRectangle(border, 0.5f, 0.5f, Side - 1, Side + Header + (showEnemies ? EnemyFooter : 0) - 1);
 
         // header: name, own position age, range
         Text(g, "CUBE RADAR", small, Palette.Muted, 7, 4);
@@ -491,6 +492,7 @@ internal static class OverlayRenderer
 
         if (s is null || me is null)
         {
+            if (showEnemies) EnemyList(g, s, small, tiny);
             Text(g, s is null ? "wartet auf Daten …" : "eigene Position unbekannt", label, Palette.Muted, cx, cy + r / 2, center: true);
             if (s is not null) Text(g, "(Buff wirken hilft)", tiny, Palette.Muted, cx, cy + r / 2 + 16, center: true);
             return;
@@ -572,6 +574,70 @@ internal static class OverlayRenderer
                 Text(g, text, label, color, tx, ty - 7, center: true);
             }
         }
+        if (showEnemies)
+        {
+            // Fresh positions only. Red diamonds cannot be mistaken for green square/height cube markers.
+            var placed = new List<RectangleF>();
+            foreach (var p in s.Players.Where(p => p.IsEnemy == true && !p.PositionStale && p.X is not null && p.Y is not null)
+                         .OrderBy(p => p.DistanceM ?? double.MaxValue).Take(12))
+            {
+                var q = ToScreen(p.X!.Value, p.Y!.Value);
+                if (!Inside(q, cx, cy, r - 8))
+                {
+                    var angle = Math.Atan2(q.Y - cy, q.X - cx);
+                    q = new PointF(cx + (float)Math.Cos(angle) * (r - 8), cy + (float)Math.Sin(angle) * (r - 8));
+                }
+                using var red = new SolidBrush(Palette.Warn);
+                PointF[] diamond = [new(q.X, q.Y - 6), new(q.X + 6, q.Y), new(q.X, q.Y + 6), new(q.X - 6, q.Y)];
+                g.FillPolygon(red, diamond);
+                var name = p.Name.Length > 9 ? p.Name[..9] + "…" : p.Name;
+                var text = $"{name} {(p.DistanceEstimated ? "~" : "")}{p.DistanceM:0}m R{p.RankCode?.ToString() ?? "?"}";
+                var width = g.MeasureString(text, tiny).Width;
+                var x = Math.Clamp(q.X + 8, 3, Math.Max(3, Side - width - 3));
+                var y = Math.Clamp(q.Y - 14, Header + 1, Header + Side - 14);
+                var bounds = new RectangleF(x - 2, y - 1, width + 4, 14);
+                if (!placed.Any(other => other.IntersectsWith(bounds)))
+                {
+                    Text(g, text, tiny, Palette.Warn, x, y);
+                    placed.Add(bounds); // full names/ranks remain in the list if point labels would overlap
+                }
+            }
+            EnemyList(g, s, small, tiny);
+        }
+    }
+
+    private static void EnemyList(Graphics g, RadarSnapshot? s, Font title, Font detail)
+    {
+        var top = Side + Header;
+        using var line = new Pen(Palette.Line);
+        g.DrawLine(line, 5, top, Side - 5, top);
+        var enemies = s?.Players.Where(p => p.IsEnemy == true).ToList() ?? [];
+        Text(g, $"GEGNER ({enemies.Count})", title, Palette.Warn, 7, top + 3);
+        if (s is null || s.OwnFaction == "Unknown")
+        {
+            Text(g, "Eigene Fraktion unter ⚙ wählen", detail, Palette.OutOfView, 7, top + 26);
+            return;
+        }
+        if (enemies.Count == 0)
+        {
+            Text(g, "Keine zugeordneten Gegner in Sicht", detail, Palette.Muted, 7, top + 26);
+            return;
+        }
+        var state = g.Save();
+        g.SetClip(new RectangleF(5, top + 21, Side - 10, EnemyFooter - 22));
+        var y = top + 24;
+        foreach (var p in enemies.Take(3))
+        {
+            var faction = p.Faction == "Asmodian" ? "Asmodier" : p.Faction;
+            var distance = p.DistanceM is { } d ? $"{(p.PositionStale || p.DistanceEstimated ? "~" : "")}{d:0} m" : "Pos. ?";
+            Text(g, $"{p.Name} · {faction} · {distance}", detail, Palette.Warn, 7, y);
+            var rank = p.RankName ?? (p.RankCode is { } code ? $"Rang-Code {code}" : "Rang unbekannt");
+            if (p.RankCode is not null && !p.RankVerified) rank += " *";
+            if (p.PositionStale && p.PositionAgeMs is { } age) rank += $" · Pos. {age / 1000}s alt";
+            Text(g, rank, detail, Palette.Muted, 7, y + 12);
+            y += 26;
+        }
+        g.Restore(state);
     }
 
     private sealed record MeView(double X, double Y, long AgeMs, double Ring);

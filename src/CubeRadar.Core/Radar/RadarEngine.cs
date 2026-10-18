@@ -46,7 +46,7 @@ public sealed record RingEstimate(double X, double Y, double Uncertainty, long T
 /// position (event-driven fixes, ring-fix fallback). Thread-safe: frames come from the capture thread, snapshots are
 /// read by the web server. Semantics are documented in docs/FINDINGS.md (B5–B8, P1–P6).
 /// </summary>
-public sealed class RadarEngine
+public sealed partial class RadarEngine
 {
     private readonly object _gate = new();
     private readonly RadarConfig _cfg;
@@ -160,12 +160,14 @@ public sealed class RadarEngine
                     _selfFromInfo = true;
                     SetSelf(self);
                 }
+                OnSelfIdentity(body);
                 break;
             case RecordKind.MapLoad:
                 if (body.Length >= 8) OnMap((int)Wire.U32(body, 4), t);
                 if (body.Length >= 28) OwnFixFromServer(body, 16, PositionKind.MapLoad, t);
                 break;
             case RecordKind.Teleport:
+                ClearPlayerContacts();
                 _quietUntilMs = t + 6_000;
                 if (body.Length >= 18) OwnFixFromServer(body, 6, PositionKind.Teleport, t);
                 break;
@@ -197,6 +199,9 @@ public sealed class RadarEngine
                     OnPosition(fix, t);
                 }
                 break;
+            default:
+                OnPlayerRecord(kind, t, body);
+                break;
         }
     }
 
@@ -217,6 +222,8 @@ public sealed class RadarEngine
     {
         if (SelfId == id) return;
         SelfId = id;
+        _detectedFaction = PlayerFaction.Unknown;
+        _players.Remove(id);
         SelfFix = null;
         SelfFixMs = 0;
         Ring = null;
@@ -239,6 +246,7 @@ public sealed class RadarEngine
 
     private void OnPosition(PositionFix fix, long t)
     {
+        UpdatePlayerPosition(fix, t);
         _lastFixByEntity[fix.EntityId] = (fix, t);
         if (_lastFixByEntity.Count > 2000)
             foreach (var k in _lastFixByEntity.Where(kv => t - kv.Value.T > 300_000).Select(kv => kv.Key).ToList())
@@ -390,6 +398,7 @@ public sealed class RadarEngine
 
     private void OnMap(int mapId, long t)
     {
+        ClearPlayerContacts(); // even an in-map teleport invalidates moving contacts, unlike stationary cubes
         _quietUntilMs = t + 6_000;
         _events.Clear();
         Ring = null;
@@ -540,7 +549,12 @@ public sealed class RadarEngine
                 SelfCheck(now),
                 new OrientationView(_north.NorthX, _north.NorthY, _north.EastX, _north.EastY, _northName),
                 _cfg.FixFreshSeconds,
-                Frames);
+                Frames)
+            {
+                Players = PlayerViews(now, ox, oy, oz),
+                OwnFaction = EffectiveOwnFaction.ToString(),
+                FactionSetting = _configuredFaction == PlayerFaction.Unknown ? "Auto" : _configuredFaction.ToString(),
+            };
         }
     }
 
@@ -578,4 +592,9 @@ public sealed record CubeView(uint ObjectId, uint Template, string? Zone, string
     double? DistanceM, double? Distance3dM, double? Bearing, string? Compass, double? DzUnits, double? FirstDistanceM, string? Note);
 
 public sealed record RadarSnapshot(long NowMs, uint? SelfId, int? MapId, string? Zone, FixView? Self, RingView? Ring,
-    List<float[]> Trail, List<CubeView> Cubes, List<string> Warnings, OrientationView Orientation, double FixFreshSeconds, long Frames);
+    List<float[]> Trail, List<CubeView> Cubes, List<string> Warnings, OrientationView Orientation, double FixFreshSeconds, long Frames)
+{
+    public List<PlayerView> Players { get; init; } = [];
+    public string OwnFaction { get; init; } = "Unknown";
+    public string FactionSetting { get; init; } = "Auto";
+}

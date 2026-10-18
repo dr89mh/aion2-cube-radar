@@ -8,6 +8,8 @@ Internetverbindung ist die abschaltbare Update-Suche bei GitHub (nur die fertige
 - **Mini-Radar über dem Spiel:** Hidden Cubes in deiner Nähe mit Entfernung, Richtung und Höhe (▲ über dir, ▼ unter
   dir), Ton bei jedem neuen Cube
 - **Status je Cube:** sichtbar, außer Sicht, wird geöffnet, geöffnet, weg
+- **Gegner im selben Radar:** rote Rauten und eine Liste mit Name, Fraktion, PvP-Rang und Entfernung (Global/Abyss,
+  erste Testversion). Zwei Rang-Codes sind mit Screenshots abgeglichen; die angenommene Rangfolge ist mit `*` markiert.
 - **Web-Ansicht** mit Karte, Liste und eigener Spot-Datenbank (Export als CSV/JSON)
 - **Eine exe** für Windows 10/11 ohne Installation, aktualisiert sich auf Klick selbst
 - Bestätigt in **Verteron**; in anderen Gebieten lernt das Radar die Cube-Kennung selbst
@@ -166,6 +168,23 @@ Die volle Ansicht öffnet `http://127.0.0.1:5313` im Browser.
 
 Replay zum Testen: `.\cuberadar.cmd radar --replay captures\<sitzung>\raw.pcapng --speed 5`. Mit `--stop-at 200`
 hält der Replay bei Sekunde 200 des Mitschnitts an.
+
+### Gegner-Fraktion und PvP-/Abyss-Ränge (Testversion)
+
+Für Elyos: `.\cuberadar.cmd radar --overlay-only --faction Elyos`.
+Die Wahl wird gespeichert; wechseln kannst du unter **⚙ → Gegner → Eigene Fraktion** oder in der Web-Ansicht
+bei **„Ich spiele“**. „Automatisch“ benötigt ein eigenes Charakterpaket, das bei Start mitten in einer Sitzung
+noch fehlen kann. Für Asmodier `--faction Asmodian` verwenden.
+
+- Nur Spieler der sicher erkannten Gegenfraktion erscheinen als Gegner, keine geratenen Entity-/Server-Zuordnungen.
+- Rote Rauten zeigen frische Positionen; darunter stehen die nächsten drei Gegner mit Fraktion und Rang.
+- 19 = Trainee und 17 = Eighth-Class Soldier sind per Screenshot beobachtet. Die übrige Zählweise
+  (18 = Ninth-Class Soldier … 10 = First-Class Soldier; kleinere Codes = höherer Rang) ist eine **Annahme** (`*`).
+- Unbekannte Paketvarianten zeigen **„Rang unbekannt“**. Es werden keine Web-Profile abgefragt.
+- Positionsdaten können verzögert eintreffen. Nach 10 s ohne Positionsupdate verschwindet der Live-Punkt;
+  die Liste kennzeichnet alte Positionen. Entfernte/getötete Gegner und Kontakte vor Teleports werden verworfen.
+- Ist die eigene Position alt oder geschätzt, sind auch Richtungen/Entfernungen unsicher; die Entfernung trägt `~`/`≈`.
+- Unter ⚙ lässt sich die zusätzliche Gegneranzeige abschalten; die Cube-Funktion bleibt erhalten.
 
 ## Aufnehmen
 

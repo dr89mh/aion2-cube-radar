@@ -1,0 +1,22 @@
+{
+  "source": "captures/radar_20261015_124046/raw.pcapng",
+  "note": "First 80 body bytes only, not complete packets. Same-length pseudonyms replace names; self server anonymised within the same region/faction. Identity structure observed on Global; faction and PvP rank are not decoded here.",
+  "frames": [
+    {
+      "op": "4536",
+      "entityId": 5840,
+      "name": "PlayerA",
+      "nameEndOffset": 15,
+      "prefixOnly": true,
+      "hex": "d02d0720a0010707506c6179657241160000000102005245838b47927685c73037ef45fa3d86439ca701ff70ff70290f0000290f00000000000000000000243902002439020000000000f04902000100"
+    },
+    {
+      "op": "3336",
+      "entityId": 2336,
+      "name": "SelfA",
+      "nameEndOffset": 13,
+      "prefixOnly": true,
+      "hex": "a012dfa1e929370553656c6641150512000000012d0000005c0900005c0900002d0000000000000000000000010000000000000000000000020164000000000000000000000000000501590031030000"
+    }
+  ]
+}

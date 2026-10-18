@@ -17,6 +17,13 @@ public enum RecordKind
     PosBuffB,
     PosCast,
     PosTarget,
+    PlayerInfo,
+    PlayerRemoved,
+    PlayerKilled,
+    PlayerPosition,
+    PlayerMove,
+    PlayerMoveAlt,
+    PlayerMoveVelocity,
 }
 
 public sealed record SelfCheckRule(RecordKind Kind, int WithinSeconds, string Hint);
@@ -62,6 +69,13 @@ public sealed class RadarConfig
         [0x2B38] = RecordKind.PosBuffB,
         [0x0238] = RecordKind.PosCast,
         [0x0E38] = RecordKind.PosTarget,
+        [0x4536] = RecordKind.PlayerInfo,
+        [0x4736] = RecordKind.PlayerRemoved,
+        [0x048D] = RecordKind.PlayerKilled,
+        [0x1A37] = RecordKind.PlayerPosition,
+        [0x1B37] = RecordKind.PlayerMove,
+        [0x1C37] = RecordKind.PlayerMoveAlt,
+        [0x2937] = RecordKind.PlayerMoveVelocity,
     };
 
     /// <summary>Loads radar.json and cubes.json; relative paths in them (spots_csv) resolve against
@@ -78,6 +92,14 @@ public sealed class RadarConfig
             if (!OpcodeBook.TryParse(p.Value.GetString() ?? "", out var op)) throw new FormatException($"radar.json: bad opcode for {p.Name}");
             opcodes[op] = ParseKind(p.Name);
         }
+
+        // Older per-user radar.json files predate player contacts. Add only missing player kinds; never restore an
+        // old opcode for a kind explicitly moved by the user, nor overwrite another configured opcode.
+        var configuredKinds = opcodes.Values.ToHashSet();
+        foreach (var (op, kind) in DefaultOpcodes().Where(kv => kv.Value is RecordKind.PlayerInfo or RecordKind.PlayerRemoved
+                     or RecordKind.PlayerKilled or RecordKind.PlayerPosition or RecordKind.PlayerMove
+                     or RecordKind.PlayerMoveAlt or RecordKind.PlayerMoveVelocity))
+            if (!configuredKinds.Contains(kind)) opcodes.TryAdd(op, kind);
 
         var selfIds = new HashSet<ushort>();
         foreach (var e in r.GetProperty("self_id_opcodes").EnumerateArray())
@@ -143,6 +165,13 @@ public sealed class RadarConfig
         "pos_buff_b" => RecordKind.PosBuffB,
         "pos_cast" => RecordKind.PosCast,
         "pos_target" => RecordKind.PosTarget,
+        "player_info" => RecordKind.PlayerInfo,
+        "player_removed" => RecordKind.PlayerRemoved,
+        "player_killed" => RecordKind.PlayerKilled,
+        "player_position" => RecordKind.PlayerPosition,
+        "player_move" => RecordKind.PlayerMove,
+        "player_move_alt" => RecordKind.PlayerMoveAlt,
+        "player_move_velocity" => RecordKind.PlayerMoveVelocity,
         _ => throw new FormatException($"radar.json: unknown record kind \"{name}\""),
     };
 }

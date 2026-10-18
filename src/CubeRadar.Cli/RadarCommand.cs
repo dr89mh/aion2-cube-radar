@@ -93,6 +93,13 @@ internal static class RadarCommand
             replay is null ? Path.Combine(AppPaths.DataDir, "radar.db") : Path.Combine(Path.GetTempPath(), $"cuberadar_replay_{stamp}.db"),
             (replay is null ? "live_" : "replay_") + stamp);
         var engine = new RadarEngine(cfg, store, spots);
+        try { engine.SetOwnFaction(Opt("--faction") ?? settings.OwnFaction); }
+        catch (FormatException ex) { Tell(ex.Message); return 2; }
+        if (Opt("--faction") is not null)
+        {
+            settings.OwnFaction = engine.Snapshot().FactionSetting;
+            settings.Save();
+        }
         if (settings.North is { } savedNorth)
         {
             try { engine.SetNorth(savedNorth); }
@@ -156,6 +163,13 @@ internal static class RadarCommand
             Log($"north = {engine.North}");
             hub.Kick();
         }
+        void SetFaction(string faction)
+        {
+            engine.SetOwnFaction(faction);
+            settings.OwnFaction = engine.Snapshot().FactionSetting;
+            settings.Save();
+            hub.Kick();
+        }
         engine.CubeAppeared += c =>
         {
             Log($"CUBE {c.ObjectId} template {c.Template} {c.Zone} at ({c.X:0}, {c.Y:0}, {c.Z:0})" +
@@ -198,6 +212,13 @@ internal static class RadarCommand
             return Results.Ok();
         });
         app.MapGet("/api/export/sightings.csv", () => Results.Text(store.Export(json: false), "text/csv"));
+        app.MapPost("/api/faction", async (HttpContext ctx) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(ctx.Request.Body);
+            try { SetFaction(body?.GetValueOrDefault("faction") ?? ""); }
+            catch (FormatException ex) { return Results.BadRequest(ex.Message); }
+            return Results.Ok();
+        });
         app.MapGet("/api/export/sightings.json", () => Results.Text(store.Export(json: true), "application/json"));
         app.Map("/ws", async (HttpContext ctx) =>
         {
@@ -254,7 +275,7 @@ internal static class RadarCommand
             {
                 Directory.CreateDirectory(AppPaths.Captures);
                 TryOpen(AppPaths.Captures);
-            }, updater);
+            }, updater, () => engine.Snapshot().FactionSetting, SetFaction);
             overlay = OverlayWindow.Start(engine.Snapshot, settings, actions);
             overlay.ShowTray();
             if (Opt("--settings-png") is { } settingsPng) SettingsForm.SavePng(settingsPng, settings, actions);
@@ -319,6 +340,7 @@ internal static class RadarCommand
             var visible = s.Cubes.Count(c => c.Status == nameof(CubeStatus.Visible));
             Log($"{(sniffer?.Status ?? replayState)} · frames {s.Frames:N0} · self {s.SelfId?.ToString() ?? "?"}" +
                 $"{(s.Self is { } f ? $" (fix {f.AgeMs / 1000} s old)" : "")} · cubes {visible} visible / {s.Cubes.Count} listed" +
+                $" · enemies {s.Players.Count(p => p.IsEnemy == true)} (own faction {s.OwnFaction})" +
                 (s.Warnings.Count > 0 ? $" · WARN {string.Join(" | ", s.Warnings)}" : ""));
         }
 

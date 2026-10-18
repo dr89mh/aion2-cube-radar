@@ -292,6 +292,110 @@ sondern ein anderer Spieler. Bestätigt durch B6.
 `1d 37` (14/s, 10–12 Byte) und `1c 37` (3/s, 21 Byte) sind laut HamMeter-Doku Bewegung. `1b 56`, `84 56`, `3b 38`,
 `3d 38` (2 Byte), `01 38` (7 Byte), `2c 38`, `35 38` sind unbekannt. Census: `captures/20261013_112703/census.txt`.
 
+### O6. Voruntersuchung der Spieleridentität (2026-10-18, vor der Abyss-Messung; Update siehe O7)
+
+Erneute Offline-Auswertung von `captures/radar_20261015_124046/raw.pcapng` mit `tools/a2wire.py`:
+4.828 benannte `45 36`-Records (nicht eindeutige Spieler) und ein benannter `33 36`-Record.
+Namenspräfix: `entity varint, mask u32, mask2 u8, [mask2 & 1] nameLength u8, name UTF-8`.
+
+- Beispiel `45 36`, Entity 5840, Test-Pseudonym `PlayerA`: Nach dem Namen beginnt der Body mit
+  `16 00 00 00 01 02 00 52 45 83 8b 47 92 76 85 c7 30 37 ef 45 …`.
+  Das passt zur Global-Variante mit Klasse direkt nach dem Namen, **nicht** zum Layout mit
+  `server u16, class u32` an dieser Stelle. Die folgenden Flags sind nicht als Fraktion/Rang identifiziert.
+- Beispiel `33 36`, eigene Entity 2336: Nach dem Namen
+  `15 05 12 00 00 00 01 2d 00 00 00 …`; anonymisierte Server-ID 1301, Klasse 18, Level 45.
+  Die semantischen Feldwerte sind ohne In-Game-Abgleich noch keine Fraktions- oder Rangbestätigung.
+- Der Referenzparser `ref/cyberbadger6969_aion2-dps-meter/src/AionMeter.Core/Protocol/PacketParser.cs`
+  berücksichtigt diese beiden Identitätsvarianten ausdrücklich (Zeilen 493–537).
+- Die lokale **Global-EU**-Serverliste
+  `ref/TheLoop705_aion2dps/tests/Aion2Dps.Armory.Tests/Fixtures/servers_global_eu.json` ordnet
+  1301–1322 `raceId=1` (Elyos), 2301–2322 `raceId=2` (Asmodier) zu. Das ist eine gespeicherte Web-API-Antwort,
+  kein Gegner-Paketbeleg. Bei Fremdspielern suchen Referenzparser die Server-ID heuristisch im Legionseintrag;
+  ohne Legion bleibt sie unbekannt. Es genügt nicht, irgendein passendes u16 im Body zu finden.
+- Nutzerbestätigung für diese Erweiterung: eigene Fraktion **Elyos**, gesuchte Ränge sind **PvP-/Abyss-Ränge**.
+  Level, Klasse und DPS-Listenplatz sind kein PvP-Rang. Kein lokaler Referenzparser dekodiert diesen Rang.
+- Zwei echte Namenspräfixe sind in `fixtures/players/2026-10-15_global_identity_prefixes.json` gespeichert,
+  ausdrücklich als unvollständige Body-Präfixe, nicht als vollständige Frames. Namen und eigener Server sind anonymisiert.
+
+**Damals noch offen (durch O7 teilweise beantwortet):** Es fehlt ein Global-Mitschnitt mit zeitlich markierten, im Spiel sicher
+identifizierten Gegnern samt Namen, Fraktion und sichtbarem PvP-Rang (möglichst zwei verschiedene Ränge).
+Bis zur Verifikation dürfen unbekannte Bytes nicht als Fraktion/Rang angezeigt und Spieler nicht allein
+aufgrund ihrer Entity-ID oder eines geratenen Server-Bands als Gegner eingestuft werden.
+
+**Nächste kontrollierte Messung (nur passiv):**
+1. Im Projektordner starten:
+   `.\cuberadar.cmd dump live --seconds 180 --hotkeys "ctrl+alt+F9=enemy_visible,ctrl+alt+F8=friendly_visible"`.
+   Vor dem Sichtkontakt starten, damit auch das erste Spielerpaket enthalten ist.
+2. Einen sicher erkannten Asmodier ins Sichtfeld kommen lassen, anwählen und dessen Namen sowie den im Spiel
+   angezeigten PvP-/Abyss-Rang notieren oder fotografieren. Gleichzeitig `Strg+Alt+F9` drücken.
+3. Wenn möglich mit einem zweiten Asmodier anderen Rangs wiederholen; einen bekannten Elyos als Kontrolle
+   mit `Strg+Alt+F8` markieren. Zu jedem Marker die sichtbaren Namen/Ränge zuordnen.
+4. Der neue Ordner `captures/<Zeitstempel>/` enthält `raw.pcapng`, `frames.jsonl`, `markers.jsonl`.
+   Erst anhand dieser beschrifteten Daten Fraktions-/Rangfelder ableiten und mit unabhängigen Fällen testen.
+
+Offline-Auszug für einen bekannten Namen:
+`python tools/playerprobe.py captures/<Zeitstempel>/frames.jsonl --name "Spielername" --out captures/<Zeitstempel>/playerprobe.json`.
+Das Hilfswerkzeug speichert Body-Hex, Namensende und benachbarte Marker (±10 s), deutet aber keine unbekannten
+Felder als Fraktion/Rang. Es akzeptiert auch rohe Mitschnitte; verschachtelte Frames daraus haben ohne sichere
+Zeitzuordnung `t: null` und keine Markerzuordnung. Deshalb für Markeranalysen bevorzugt `frames.jsonl` verwenden.
+Tests: `python -m unittest discover -s tests -p "test_*.py"` (16 Tests inkl. echter Global-Präfixe).
+
+### O7. Abyss: zwei Fraktions-/Rangbeispiele mit Screenshot und Marker (2026-10-18)
+
+Quellen: `captures/20261018_201957/` (300 s, 67 Spieler-Info-Records / 38 Namen, zwei Gegner-Marker)
+und `captures/20261018_203833/` (127 Spieler-Info-Records / 65 benannte Identitäten inkl. eigener).
+Erster Mitschnitt: keine TCP-Lücken, Npcap-Drops, Resyncs oder kaputten Bundles. Keine neue Client-Buildnummer erhoben.
+Die Screenshots heißen `AION2_qS0n9fJBiy.png` (20:20:25) und `AION2_zCAyHW1esD.png` (20:21:37).
+Die folgenden Spielernamen sind gleich lange Test-Pseudonyme. Originale und Zuordnung bleiben ausschließlich
+in den ignorierten lokalen Mitschnitten (`captures/player_fixture_names.private.json`).
+
+| Spieler | Entity | Screenshot | Marker (Unix-ms) | Beobachteter Rang-Code |
+|---|---:|---|---:|---:|
+| EnemyAlphaA[MUN] | 14332 | Trainee, roter Gegner | 1792347626924 | 19 |
+| EnemyB[MUN] | 11930 | Eighth-Class Soldier, roter Gegner | 1792347698264 | 17 |
+
+**Fraktion:** Nach dem Namen im `45 36`-Body (`A` = Namensende) stehen `pcId u32, race u8, gender u8`.
+Beispiele: EnemyAlphaA `0b 00 00 00 02 01`, EnemyB `1b 00 00 00 02 01`.
+`race=2` passt zu beiden als Asmodier identifizierten Gegnern. Eigener Elyos: pcId 18 und race 1 im `33 36`-Layout.
+Zusatzprüfung für die hier beobachteten pcIds 5–36: `race = ((pcId-5)%4)/2+1`, `gender = ((pcId-5)%2)+1`.
+Kein Widerspruch in den 194 Spielerpaketen der beiden neuen Mitschnitte. Bei Konflikt oder unbekanntem pcId:
+Fraktion **unbekannt**, nicht raten. Die Serverband-Heuristik wird nicht benötigt. `[MUN]` ist der Serverkurzname
+Munin (Global-EU-Liste: 2313), nicht ein Teil des übermittelten Charakternamens.
+
+**Rangfeld, zunächst konservativ für eine beobachtete Endstruktur:**
+`8×00, [Steuerbyte 0..3], 21 f4 cb 1f, u32 unbekannt, u32 Rang-Code, u32 unbekannt, 5–6×00`.
+Der Anker (`u32 533460001`) liegt 21 oder 22 Byte vor dem Body-Ende; er darf nach dem Namenspräfix nur einmal
+vorkommen. Der gesamte variable Body davor ist ausdrücklich **nicht** dekodiert.
+Erster Trainee-Body: 1484 Byte, Anker bei 1463, Code bei 1471 (`13 00 00 00`).
+Erster EnemyB-Body: 1516 Byte, Anker bei 1495, Code bei 1503 (`11 00 00 00`);
+zweiter Body 1532 Byte, Anker bei 1511. Nicht feste Offsets vom Body-Anfang verwenden.
+Trainee-Code 19 bleibt in vier weiteren Info-Records des zweiten Mitschnitts gleich; EnemyB-Code 17 in beiden Records.
+Andere Endvarianten (`24 f4 cb 1f`, `26 f4 cb 1f`) bleiben zunächst unbekannt.
+
+**Nutzerfreigabe als ANNAHME:** Code 19 ist der niedrigste Rang; kleinere Codes sind höhere Ränge.
+Daraus: 18 Ninth-Class Soldier, 17 Eighth-Class Soldier, …, 10 First-Class Soldier.
+Nur 19 und 17 sind screenshotgestützt. Andere Namen bekommen `*`; Codes 1–9 werden ohne erfundene Offizierstitel
+als „PvP-Rang N *“ gezeigt. Das ist keine vollständig verifizierte Rangtabelle.
+
+**Bewegung/Lebenszyklus:** Nur bereits als Spieler identifizierte Entities werden über `1a 37`, `1b 37`, `1c 37`,
+`29 37` und die vorhandenen Buff-/Cast-Zielpositionen aktualisiert; diese Bewegung darf nie die eigene Position ersetzen.
+Es wird keine Spawn-Position aus unbekannten Masken geraten. `47 36` entfernt Kontakte (EnemyAlphaA bei
+1792347632885: `fc 6f 01 00`); `04 8d` benennt EnemyB als Opfer bei 1792347719590.
+Kartenwechsel und Teleports löschen bewegliche Kontakte, auch innerhalb derselben Map. Über 10 s alte Positionen
+sind als alt markiert und verschwinden als Live-Radar-Punkt; Kontakte ohne Daten verfallen nach 120 s.
+Eine alte eigene Position oder ein aktiver Ring-Fix macht relative Entfernungen/Richtungen ebenfalls unsicher;
+`DistanceEstimated` kennzeichnet diese Fälle, dargestellt mit `~`/`≈`. Beim EnemyB-Replay war die eigene reale
+Position 14,5 s alt und ein Ring-Fix aktiv: die ausgegebenen ca. 111 m sind eine Schätzung, kein präziser Messwert.
+
+Implementation: `Protocol/PlayerMessages.cs`, `Radar/RadarEngine.Players.cs`, `Radar/PvpRanks.cs`.
+28 aus echten Bodies abgeleitete, minimierte Testfälle liegen in `fixtures/players/2026-10-18_abyss.json`.
+Namenslängen, Positionsdaten und Rang-Endstrukturen bleiben erhalten; Namen sind pseudonymisiert, der nicht benötigte
+private Profil-/Ausrüstungsbereich ist mit Nullen ersetzt. Kill-Records behalten nur Opfer-ID/u32, keine Killernamen.
+Die Extraktion ist über `python tools/make_player_fixture.py --names captures/player_fixture_names.private.json`
+nachvollziehbar (vorhandene Ausgabedateien werden nicht überschrieben). Rohdaten, Namenszuordnung und Screenshots bleiben lokal.
+CLI: `radar --faction Elyos` speichert die eigene Fraktion; alternativ ⚙ oder „Ich spiele“ in der Web-Ansicht.
+„Auto“ benötigt ein eigenes `33 36`; beim Start mitten in einer Sitzung ggf. manuell wählen.
+
 ## COMMUNITY / HYPOTHESEN (Stand 2026-10-13, Quellen unten)
 
 | Opcode | Bedeutung | Layout | Quelle | Status |

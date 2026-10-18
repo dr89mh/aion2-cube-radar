@@ -37,6 +37,14 @@
           </select>
         </label>
         <span class="spacer"></span>
+        <label>Ich spiele
+          <select id="faction">
+            <option value="Auto">Automatisch</option>
+            <option value="Elyos">Elyos</option>
+            <option value="Asmodian">Asmodier</option>
+          </select>
+        </label>
+        <button id="enemies" class="toggle on">Gegner an</button>
         <button id="sound" class="toggle">Ton aus</button>
         <button id="notify" class="toggle">Hinweise aus</button>
       </div>
@@ -48,11 +56,18 @@
         <span><i class="sw opening"></i>wird geöffnet</span>
         <span><i class="sw gone"></i>geöffnet / weg</span>
         <span><i class="sw me"></i>du</span>
+        <span><i class="sw enemy"></i>Gegner (Raute)</span>
         <span><i class="sw spot"></i>mögliche Spots</span>
         <span><i class="sw hist"></i>früher gesehen</span>
       </div>
     </section>
     <aside>
+      <section class="enemy-section">
+        <div class="listhead"><h2>Gegner <span id="enemy-count"></span></h2></div>
+        <ol id="enemy-list" class="list"></ol>
+        <p id="enemy-empty" class="empty">Wartet auf Spielerpakete.</p>
+        <p class="rank-note">* Angenommene Rangfolge: kleinere Codes = höherer Rang. 19/17 per Screenshot beobachtet.</p>
+      </section>
       <div class="listhead">
         <h2>Cubes <span id="count"></span></h2>
         <span class="exports">Export: <a href="/api/export/sightings.csv" download="sightings.csv">CSV</a> · <a href="/api/export/sightings.json" download="sightings.json">JSON</a></span>
