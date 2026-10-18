@@ -443,6 +443,7 @@ internal static class OverlayRenderer
         using var small = new Font("Segoe UI", 8f, FontStyle.Bold, GraphicsUnit.Point);
         using var label = new Font("Segoe UI", 8.5f, FontStyle.Bold, GraphicsUnit.Point);
         using var tiny = new Font("Segoe UI", 7f, FontStyle.Regular, GraphicsUnit.Point);
+        using var rankFont = new Font("Segoe UI", 8.5f, FontStyle.Bold, GraphicsUnit.Point);
 
         using (var border = new Pen(Palette.Line, 1))
             g.DrawRectangle(border, 0.5f, 0.5f, Side - 1, Side + Header + (showEnemies ? EnemyFooter : 0) - 1);
@@ -577,30 +578,44 @@ internal static class OverlayRenderer
         if (showEnemies)
         {
             // Fresh positions only. Red diamonds cannot be mistaken for green square/height cube markers.
+            const float markerRadius = 10;
             var placed = new List<RectangleF>();
+            var markers = new List<(PointF Point, PlayerView Player)>();
             foreach (var p in s.Players.Where(p => p.IsEnemy == true && !p.PositionStale && p.X is not null && p.Y is not null)
                          .OrderBy(p => p.DistanceM ?? double.MaxValue).Take(12))
             {
                 var q = ToScreen(p.X!.Value, p.Y!.Value);
-                if (!Inside(q, cx, cy, r - 8))
+                if (!Inside(q, cx, cy, r - markerRadius - 1))
                 {
                     var angle = Math.Atan2(q.Y - cy, q.X - cx);
-                    q = new PointF(cx + (float)Math.Cos(angle) * (r - 8), cy + (float)Math.Sin(angle) * (r - 8));
+                    q = new PointF(cx + (float)Math.Cos(angle) * (r - markerRadius - 1), cy + (float)Math.Sin(angle) * (r - markerRadius - 1));
                 }
-                using var red = new SolidBrush(Palette.Warn);
-                PointF[] diamond = [new(q.X, q.Y - 6), new(q.X + 6, q.Y), new(q.X, q.Y + 6), new(q.X - 6, q.Y)];
-                g.FillPolygon(red, diamond);
+                markers.Add((q, p));
                 var name = p.Name.Length > 9 ? p.Name[..9] + "…" : p.Name;
-                var text = $"{name} {(p.DistanceEstimated ? "~" : "")}{p.DistanceM:0}m R{p.RankCode?.ToString() ?? "?"}";
+                var text = $"{name} {(p.DistanceEstimated ? "~" : "")}{p.DistanceM:0}m";
                 var width = g.MeasureString(text, tiny).Width;
-                var x = Math.Clamp(q.X + 8, 3, Math.Max(3, Side - width - 3));
-                var y = Math.Clamp(q.Y - 14, Header + 1, Header + Side - 14);
+                var x = Math.Clamp(q.X + markerRadius + 4, 3, Math.Max(3, Side - width - 3));
+                var y = Math.Clamp(q.Y - 24, Header + 1, Header + Side - 14);
                 var bounds = new RectangleF(x - 2, y - 1, width + 4, 14);
                 if (!placed.Any(other => other.IntersectsWith(bounds)))
                 {
                     Text(g, text, tiny, Palette.Warn, x, y);
                     placed.Add(bounds); // full names/ranks remain in the list if point labels would overlap
                 }
+            }
+            // Paint badges last, nearest on top, so adjacent name labels can never obscure a class glyph.
+            using var red = new SolidBrush(Palette.Warn);
+            using var ink = new SolidBrush(Palette.Background);
+            using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center,
+                FormatFlags = StringFormatFlags.NoWrap };
+            foreach (var marker in markers.AsEnumerable().Reverse())
+            {
+                var q = marker.Point;
+                PointF[] diamond = [new(q.X, q.Y - markerRadius), new(q.X + markerRadius, q.Y),
+                    new(q.X, q.Y + markerRadius), new(q.X - markerRadius, q.Y)];
+                g.FillPolygon(red, diamond);
+                g.DrawString(marker.Player.RankSymbol, rankFont, ink,
+                    new RectangleF(q.X - markerRadius, q.Y - markerRadius, 2 * markerRadius, 2 * markerRadius), centered);
             }
             EnemyList(g, s, small, tiny);
         }

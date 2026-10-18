@@ -2,9 +2,15 @@
 import os
 import sys
 import unittest
+import contextlib
+import io
+import json
+import tempfile
+from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
-from make_player_fixture import public_body
+from make_player_fixture import main, public_body
 from playerprobe import parse_identity
 
 
@@ -46,6 +52,26 @@ class PublicFixtureTests(unittest.TestCase):
     def test_movement_bytes_stay_unchanged(self):
         original = bytes(range(30))
         self.assertEqual(public_body("1a37", original), original)
+
+    def test_arbitrary_jsonl_export_never_publishes_private_paths_or_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            frames = folder / "frames.jsonl"
+            frames.write_text(json.dumps({"type": "frame", "t": 123, "op": "4536", "hex": self.identity().hex()}) + "\n", encoding="utf-8")
+            names = folder / "names.private.json"
+            names.write_text(json.dumps({"SecretX": {"alias": "PlayerA", "faction": "Asmodian", "rankCode": 19,
+                "screenshot": str(folder / "image.png"), "screenshotMs": 456}}), encoding="utf-8")
+            output = folder / "public.json"
+            argv = ["make_player_fixture.py", "--names", str(names), "--frames", str(frames), "--out", str(output)]
+            with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+                main()
+            public = output.read_text(encoding="utf-8")
+            result = json.loads(public)
+            self.assertNotIn("SecretX", public)
+            self.assertEqual(result["frames"][0]["source"], "frames.jsonl")
+            self.assertEqual(result["labels"]["PlayerA"]["screenshot"], "image.png")
+            self.assertEqual(result["labels"]["PlayerA"]["screenshotMs"], 456)
+            self.assertNotIn(b"PrivateGuild", bytes.fromhex(result["frames"][0]["hex"]))
 
 
 if __name__ == "__main__":

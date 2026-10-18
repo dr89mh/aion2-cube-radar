@@ -75,9 +75,13 @@ nur bei Ereignissen, etwa wenn du einen Buff wirkst oder angegriffen wirst.
 
 - **Rote Rauten** stehen für zugeordnete Spieler der Gegenfraktion. Unter dem Radar stehen die nächsten drei
   Kontakte mit Name, Fraktion und PvP-/Abyss-Rang; in der Web-Ansicht gibt es eine zusätzliche Gegnerliste.
+- Ab **0.9.1** enthält jede Raute die Soldatenklasse **1–9**, **T** für Trainee oder **?** bei unbekannter Klasse.
+  Das ist die Klasse, nicht der Protokollcode: Code 14 erscheint beispielsweise als **5**. Name und Entfernung stehen
+  daneben, der volle Rang weiterhin in der Liste. Bei Platzmangel kann die Namensbeschriftung entfallen; die Ziffer bleibt im Symbol.
 - Unter **⚙ → Gegner → Eigene Fraktion** Elyos oder Asmodier wählen. „Automatisch“ funktioniert erst nach einer
   eigenen Charakterinfo; bei Start mitten in einer Sitzung kann sie fehlen. Unbekannte Fraktionen werden nicht als Gegner ausgegeben.
-- Beobachtet sind **19 = Trainee** und **17 = Eighth-Class Soldier**. Die angenommene Zählweise
+- Beobachtet sind **19 = Trainee**, **17 = Eighth-Class Soldier**, **16 = Seventh-Class Soldier** und
+  **15 = Sixth-Class Soldier** und **14 = Fifth-Class Soldier**. Die übrige angenommene Zählweise
   18 = Ninth-Class Soldier … 10 = First-Class Soldier (kleinere Codes = höherer Rang) trägt **`*`**.
   Weitere Paketvarianten können noch „Rang unbekannt“ zeigen.
 - **`~`/`≈` vor der Entfernung:** Die eigene oder gegnerische Position ist alt/geschätzt; auch die Richtung kann abweichen.

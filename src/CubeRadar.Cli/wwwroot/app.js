@@ -138,6 +138,28 @@ function rankText(p) {
   return text + (p.rankCode != null && !p.rankVerified ? " *" : "");
 }
 
+function rankSymbol(p) {
+  if (typeof p.rankSymbol === "string" && /^[1-9T?]$/.test(p.rankSymbol)) return p.rankSymbol;
+  // Compatibility with older snapshots; never put a wire code (e.g. 14) into the class badge (5).
+  if (p.rankCode === 19) return "T";
+  return Number.isInteger(p.rankCode) && p.rankCode >= 10 && p.rankCode <= 18 ? String(p.rankCode - 9) : "?";
+}
+
+function enemyMarker(x, y, p) {
+  const radius = 11;
+  ctx.save();
+  ctx.fillStyle = COLORS.enemy;
+  ctx.beginPath();
+  ctx.moveTo(x, y - radius); ctx.lineTo(x + radius, y); ctx.lineTo(x, y + radius); ctx.lineTo(x - radius, y); ctx.closePath();
+  ctx.fill();
+  ctx.font = "bold 12px Segoe UI, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#0e1217";
+  ctx.fillText(rankSymbol(p), x, y + 0.5);
+  ctx.restore();
+}
+
 function renderEnemies() {
   const r = msg.radar, list = enemies();
   const unknown = (r.players || []).filter((p) => p.isEnemy == null).length;
@@ -354,6 +376,7 @@ function draw() {
   }
 
   const enemyLabels = [];
+  const enemyMarkers = [];
   for (const p of positionedEnemies) {
     let [x, y] = toScreen(p);
     if (ui.mode === "radar") {
@@ -361,15 +384,14 @@ function draw() {
       const k = Math.max(1, Math.abs(dx) / (w / 2 - 18), Math.abs(dy) / (h / 2 - 18));
       x = w / 2 + dx / k; y = h / 2 + dy / k;
     }
-    ctx.fillStyle = COLORS.enemy;
-    ctx.beginPath();
-    ctx.moveTo(x, y - 7); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 7, y); ctx.closePath(); ctx.fill();
+    enemyMarkers.push({ x, y, p });
     // Avoid unreadable stacks for crowded contacts; their complete details remain in the list.
     if (!enemyLabels.some(([lx, ly]) => Math.abs(lx - x) < 240 && Math.abs(ly - y) < 16)) {
-      drawText(x + 10, y - 8, `${p.name} · ${p.distanceM != null ? (p.distanceEstimated ? "≈" : "") + fmtNum(p.distanceM) + " m · " : ""}${rankText(p)}`, COLORS.enemy);
+      drawText(x + 14, y - 16, `${p.name}${p.distanceM != null ? " · " + (p.distanceEstimated ? "≈" : "") + fmtNum(p.distanceM) + " m" : ""}`, COLORS.enemy);
       enemyLabels.push([x, y]);
     }
   }
+  for (const { x, y, p } of enemyMarkers.reverse()) enemyMarker(x, y, p);
   drawHeightStrip(full, h, r, m);
 }
 

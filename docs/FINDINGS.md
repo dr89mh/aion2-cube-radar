@@ -342,6 +342,8 @@ Tests: `python -m unittest discover -s tests -p "test_*.py"` (16 Tests inkl. ech
 
 ### O7. Abyss: zwei Fraktions-/Rangbeispiele mit Screenshot und Marker (2026-10-18)
 
+Stand der ersten Auswertung für 0.9.0; zusätzliche Rang-/Paketbelege und Korrekturen stehen in O8.
+
 Quellen: `captures/20261018_201957/` (300 s, 67 Spieler-Info-Records / 38 Namen, zwei Gegner-Marker)
 und `captures/20261018_203833/` (127 Spieler-Info-Records / 65 benannte Identitäten inkl. eigener).
 Erster Mitschnitt: keine TCP-Lücken, Npcap-Drops, Resyncs oder kaputten Bundles. Keine neue Client-Buildnummer erhoben.
@@ -395,6 +397,107 @@ Die Extraktion ist über `python tools/make_player_fixture.py --names captures/p
 nachvollziehbar (vorhandene Ausgabedateien werden nicht überschrieben). Rohdaten, Namenszuordnung und Screenshots bleiben lokal.
 CLI: `radar --faction Elyos` speichert die eigene Fraktion; alternativ ⚙ oder „Ich spiele“ in der Web-Ansicht.
 „Auto“ benötigt ein eigenes `33 36`; beim Start mitten in einer Sitzung ggf. manuell wählen.
+
+### O8. Zusätzliche Rangbelege und Endvariante `26 f4 cb 1f` (2026-10-18, nach 0.9.0)
+
+Zeitlicher Stand dieser Auswertung: Code 14 war noch abgeleitet; spätere Belege siehe O9.
+
+Quelle: laufender lokaler Mitschnitt `%LOCALAPPDATA%/CubeRadar/captures/radar_20261018_214745/raw.pcapng`.
+Für die Analyse wurde eine Kopie nur bis zum letzten vollständigen pcapng-Block gelesen; die Aufnahme wurde weder
+beendet noch verändert. C#-Offline-Decoder: 73.469 Frames, 432 `45 36`, zwei Streams, keine Resyncs/kaputten Bundles,
+eine TCP-Lücke. Alle hier relevanten Spielerpakete liegen in LZ4-Bundles; ihre Zeiten wurden deshalb aus dem C#-Dump
+genommen, nicht aus geratenen Top-Level-Offsets des Python-Decoders.
+
+Namen in dieser Tabelle sind wieder gleich lange Pseudonyme; die private Zuordnung liegt nur unter
+`captures/rank_variant_names.private.json` (ignoriert). Screenshots bleiben lokal.
+
+| Pseudonym | Spielerinfo lokal | Screenshot | Anzeige im Spiel | Endvariante / Code |
+|---|---|---|---|---|
+| EnemyC | 21:55:01.783 | `AION2_ihPVwNgju2.png`, 21:55:05.255 | Sixth-Class Soldier | `26 f4 cb 1f` / 15 |
+| EnemyC, erneut | 21:55:32.788 | `AION2_c7y9vfLUmr.png`, 21:55:42.436 | Sixth-Class Soldier | `26 f4 cb 1f` / 15 |
+| EnemyEcho | 21:55:45.240 | `AION2_7aYFuSdxDY.png`, 21:55:49.823 | Sixth-Class Soldier | `21 f4 cb 1f` / 15 |
+| FoeAA | 21:57:14.341 | `AION2_mvg82T0HpX.png`, 21:57:16.926 | Seventh-Class Soldier | `21 f4 cb 1f` / 16 |
+| EnemyF | 21:52:42.932 | `AION2_dEyS9R3nWF.png`, 21:52:49.829 | Trainee | `21 f4 cb 1f` / 19 |
+
+Damit passen **15 = Sixth-Class Soldier** unabhängig in beiden Endvarianten und **16 = Seventh-Class Soldier**.
+Die bisher angenommene Zählweise wird gestützt; vollständig verifiziert sind weiterhin nur die vier gesehenen Codes
+19/17/16/15, nicht eine vollständige Rangtabelle. Code 14 bleibt etwa „Fifth-Class Soldier *“.
+
+Bei EnemyC sind drei unveränderte Rangwerte vorhanden: 22 Byte Endstruktur mit Schlussbyte `01` um 21:55:01.783,
+21 Byte mit Schlussbyte `00` um 21:55:12.785, erneut 22 Byte/`01` um 21:55:32.788.
+Der Rang bleibt jeweils bei **Anker + 8**. Deshalb wird zusätzlich das abschließende `01` ausschließlich für die
+beobachtete 22-Byte-Struktur der Variante `26 ...` zugelassen; die Bytes ab Anker + 16 bis vor das Schlussbyte müssen dabei weiter null sein.
+Andere nichtnullige Schlusswerte, unpassende Längen und mehrdeutige Anker bleiben ungültig.
+
+Die Korrektur erweitert den Rangparser nur auf die exakt beobachteten Anker `21 f4 cb 1f` und `26 f4 cb 1f`.
+Die Variante `24 f4 cb 1f` (EnemyFutureA, keine Rangaufnahme) bleibt bewusst unbekannt; die gesamte Tag-Familie
+wird nicht pauschal freigeschaltet. Fraktions-, Namens- und ID-Prüfungen bleiben unverändert.
+Der frühere unbekannte Kontakt EnemyG verwendet `26 ...`, Code 14; EnemyH ebenfalls `26 ...`, Code 15.
+Für diese einzelnen Spieler gibt es keinen In-Game-Rangabgleich, die Feldinterpretation folgt der nun beobachteten Variante.
+
+36 minimierte, pseudonymisierte Testfälle mit privaten Profilbereichen als Null-Padding liegen in
+`fixtures/players/2026-10-18_rank_variants.json`. Die neuen Identitätsnamen werden nicht hartcodiert erkannt:
+geprüft werden nur Struktur/Anker, Rangwert und Fraktion. `tools/make_player_fixture.py --frames <JSONL> --names <private-Zuordnung> --out <Fixture>`
+unterstützt nun auch beliebige Offline-Dumps; absolute private Quellen-/Screenshotpfade werden nicht exportiert.
+
+### O9. Fifth-Class / Code 14 und Ankerwechsel beim selben Spieler (2026-10-18)
+
+Zusätzliche Screenshots aus derselben laufenden Aufnahme, wiederum mit gleich langen Pseudonymen:
+
+| Pseudonym | Spielerinfo lokal | Screenshot lokal | Anzeige / Code |
+|---|---|---|---|
+| EnemyJ | 22:08:26.505 | `AION2_uu1wFiW0iv.png`, 22:08:30.477 | Fifth-Class Soldier / 14 |
+| FoeBB | 22:07:05.603 | `AION2_g7p80hziCm.png`, 22:07:15.079 | Seventh-Class Soldier / 16 |
+| FoeBB, gleicher Kontakt | dieselbe Info | `AION2_06jlxSlAud.png`, 22:07:19.407 | Seventh-Class Soldier / 16 |
+| EnemyKKK | 22:07:05.150 | `AION2_sB0omBE31Z.png`, 22:07:10.382 | Seventh-Class Soldier / 16 |
+
+EnemyJ (Entity 2062) kommt um 22:08:11.502 und 22:08:26.505 mit `21 f4 cb 1f`, später um
+22:16:26.518, 22:17:49.516 und 22:18:59.521 mit `26 f4 cb 1f`. Der komplette Rang-Endblock nach dem
+ersten Tag-Byte bleibt in allen fünf Records gleich: Code 14 an Anker + 8. Damit ist zusätzlich ein Ankerwechsel
+beim selben Spieler belegt, nicht nur der Vergleich unterschiedlicher Spieler gleichen Rangs.
+
+**14 = Fifth-Class Soldier** ist damit ebenfalls screenshotgestützt und erhält kein Annahme-Sternchen mehr.
+Die jüngsten Beispiele bestätigen erneut **16 = Seventh-Class Soldier**. Die Variante `24 ...` ist weiterhin nicht
+mit einem im Spiel sichtbaren Rang abgeglichen und bleibt unbekannt.
+
+Nutzerfreigabe: die lückenlose absteigende Zuordnung von Trainee bis First-Class darf verwendet werden:
+
+| Code | Name | Belegstatus |
+|---:|---|---|
+| 19 | Trainee | Screenshot |
+| 18 | Ninth-Class Soldier | abgeleitet (`*`) |
+| 17 | Eighth-Class Soldier | Screenshot |
+| 16 | Seventh-Class Soldier | Screenshot |
+| 15 | Sixth-Class Soldier | Screenshot |
+| 14 | Fifth-Class Soldier | Screenshot |
+| 13 | Fourth-Class Soldier | abgeleitet (`*`) |
+| 12 | Third-Class Soldier | abgeleitet (`*`) |
+| 11 | Second-Class Soldier | abgeleitet (`*`) |
+| 10 | First-Class Soldier | abgeleitet (`*`) |
+
+Die Namenszuordnung setzt einen erfolgreich gelesenen Code voraus; sie darf keine unbekannte Paketstruktur in einen
+geratenen Rang verwandeln. Alle zehn Namenszuordnungen und ihre getrennten Belegflags haben Regressionstests.
+19 weitere minimierte Testfälle liegen in `fixtures/players/2026-10-18_fifth_rank.json`; Originalnamen/Zuordnung bleiben
+unter `captures/fifth_rank_names.private.json` lokal. Darunter sind fünf Info-Records desselben Fifth-Class-Spielers
+mit beiden Endvarianten sowie zwei Seventh-Class-Kontrollen.
+Lokale Prüfung dieses Stands: Build ohne Warnungen/Fehler, 200 C#-, 22 Python- und 7 Web-UI-Tests erfolgreich.
+
+### O10. Klassenzeichen direkt im Gegner-Symbol (0.9.1)
+
+Nutzerwunsch: Soldatenklasse 1–9 direkt in der Raute, T für Trainee, ? für unbekannt. `PvpRanks.Symbol` bildet
+Code 10–18 auf 1–9 und Code 19 auf T ab. Andere Codes, auch zukünftige Offiziers-Codes 1–9, werden **nicht** als
+Soldatenklassen missverstanden. `PlayerView.RankSymbol` wird als `rankSymbol` an die Web-Ansicht übertragen.
+Diese hat einen identischen Fallback für ältere Snapshots.
+
+Overlay und Web-Radar zeichnen etwas größere rote Rauten mit zentriertem dunklem Zeichen. Symbole werden nach
+den Namensbeschriftungen gezeichnet (nächster Kontakt oben), damit Namen die Klassenziffern nicht verdecken.
+Namens-/Entfernungsbeschriftung bleibt daneben; ausgeschriebene Ränge und Annahme-Sternchen bleiben in der Liste.
+Eine unterdrückte Namensbeschriftung bei dicht stehenden Gegnern unterdrückt nicht das Klassenzeichen.
+
+Replay-Vorschauen wurden ohne Änderung der laufenden Aufnahme erzeugt: Trainee-Symbol T aus dem ersten
+Abyss-Mitschnitt sowie die Symbole 4/5/6 aus der späteren Aufnahme. Das API lieferte dabei passend T und 5,
+die Bilder wurden auf Lesbarkeit geprüft. Vorschauen und Originalnamen bleiben lokal und werden nicht veröffentlicht.
+Stand 0.9.1: Build ohne Warnungen/Fehler, 217 C#-, 22 Python- und 10 Web-UI-Tests erfolgreich (249 insgesamt).
 
 ## COMMUNITY / HYPOTHESEN (Stand 2026-10-13, Quellen unten)
 

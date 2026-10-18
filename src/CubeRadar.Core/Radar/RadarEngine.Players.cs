@@ -108,4 +108,7 @@ public sealed partial class RadarEngine
 
 public sealed record PlayerView(uint EntityId, string Name, string Faction, uint? RankCode, string? RankName, bool RankVerified, bool? IsEnemy,
     double? X, double? Y, double? Z, long FirstSeenMs, long LastSeenMs, long? PositionMs, long? PositionAgeMs,
-    bool PositionStale, double? DistanceM, bool DistanceEstimated, double? Bearing, string? Compass, double? DzUnits);
+    bool PositionStale, double? DistanceM, bool DistanceEstimated, double? Bearing, string? Compass, double? DzUnits)
+{
+    public string RankSymbol => PvpRanks.Symbol(RankCode);
+}

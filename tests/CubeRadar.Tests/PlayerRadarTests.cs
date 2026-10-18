@@ -25,8 +25,8 @@ public class PlayerRadarTests
     [Theory]
     [InlineData("EnemyAlphaA", 14332u, PlayerFaction.Asmodian, 19u, "Trainee")]
     [InlineData("EnemyB", 11930u, PlayerFaction.Asmodian, 17u, "Eighth-Class Soldier")]
-    [InlineData("AllyA", 13372u, PlayerFaction.Elyos, 14u, null)]
-    [InlineData("EnemyUnknown", 10456u, PlayerFaction.Asmodian, 15u, null)]
+    [InlineData("AllyA", 13372u, PlayerFaction.Elyos, 14u, "Fifth-Class Soldier")]
+    [InlineData("EnemyUnknown", 10456u, PlayerFaction.Asmodian, 15u, "Sixth-Class Soldier")]
     public void Real_identity_fields_match_observations(string name, uint id, PlayerFaction faction, uint rank, string? label)
     {
         foreach (var f in Frames().Where(f => f.Op == 0x4536 && f.Name == name))
@@ -125,6 +125,12 @@ public class PlayerRadarTests
     [InlineData(19u, "Trainee", true)]
     [InlineData(18u, "Ninth-Class Soldier", false)]
     [InlineData(17u, "Eighth-Class Soldier", true)]
+    [InlineData(16u, "Seventh-Class Soldier", true)]
+    [InlineData(15u, "Sixth-Class Soldier", true)]
+    [InlineData(14u, "Fifth-Class Soldier", true)]
+    [InlineData(13u, "Fourth-Class Soldier", false)]
+    [InlineData(12u, "Third-Class Soldier", false)]
+    [InlineData(11u, "Second-Class Soldier", false)]
     [InlineData(10u, "First-Class Soldier", false)]
     [InlineData(9u, "PvP-Rang 9", false)]
     [InlineData(0u, null, false)]
@@ -133,6 +139,40 @@ public class PlayerRadarTests
     {
         Assert.Equal(name, PvpRanks.Name(code));
         Assert.Equal(verified, PvpRanks.IsVerified(code));
+    }
+
+    [Theory]
+    [InlineData(19u, "T")]
+    [InlineData(18u, "9")]
+    [InlineData(17u, "8")]
+    [InlineData(16u, "7")]
+    [InlineData(15u, "6")]
+    [InlineData(14u, "5")]
+    [InlineData(13u, "4")]
+    [InlineData(12u, "3")]
+    [InlineData(11u, "2")]
+    [InlineData(10u, "1")]
+    [InlineData(null, "?")]
+    [InlineData(0u, "?")]
+    [InlineData(1u, "?")]
+    [InlineData(9u, "?")]
+    [InlineData(20u, "?")]
+    [InlineData(uint.MaxValue, "?")]
+    public void Badge_shows_soldier_class_instead_of_wire_code(uint? code, string symbol)
+    {
+        Assert.Equal(symbol, PvpRanks.Symbol(code));
+    }
+
+    [Fact]
+    public void Snapshot_serializes_class_symbol_for_the_web_client()
+    {
+        var engine = new RadarEngine(new RadarConfig());
+        Feed(engine, Identity("EnemyB"));
+        var player = Assert.Single(engine.Snapshot().Players);
+        Assert.Equal(17u, player.RankCode);
+        Assert.Equal("8", player.RankSymbol);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(player, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal("8", json.RootElement.GetProperty("rankSymbol").GetString());
     }
 
     [Fact]

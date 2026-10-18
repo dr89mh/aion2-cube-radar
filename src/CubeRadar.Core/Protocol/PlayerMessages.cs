@@ -6,16 +6,16 @@ public enum PlayerFaction { Unknown, Elyos, Asmodian }
 
 /// <summary>A named player. <see cref="PcId"/> is the raw u32 after the name (0 when cut off). <see cref="Faction"/> stays
 /// <see cref="PlayerFaction.Unknown"/> unless pcId, race and gender agree; <see cref="RankCode"/> is null unless the
-/// observed tail matches exactly, and <see cref="RankName"/> is only set for the two codes seen in-game.</summary>
+/// observed tail matches exactly, and <see cref="RankName"/> is only set for codes matched to the rank shown in-game.</summary>
 public readonly record struct PlayerIdentity(uint EntityId, string Name, uint PcId, PlayerFaction Faction, uint? RankCode,
     string? RankName);
 
 /// <summary>
-/// Passive decoders for player records (Global, docs/FINDINGS.md O6). The name prefix is verified on real records
+/// Passive decoders for player records (Global, docs/FINDINGS.md O6–O9). The name prefix is verified on real records
 /// (fixtures/players); everything after it is checked so strictly that a mismatch degrades to "unknown", never to a guess:
 /// <code>
 /// identity  id varint, mask1 u32, mask2 u8 (bit 0 set), name length u8 (1..36), name UTF-8, then
-///   other   pcId u32, race u8, gender u8, …, [8 × 00, 21 f4 cb 1f, u32, rank u32, u32, 5–6 × 00]
+///   other   pcId u32, race u8, gender u8, …, [8 × 00, 21|26 f4 cb 1f, u32, rank u32, u32, 5 × 00, optional 00 (or 01 for tag 26)]
 ///   self    server u16, pcId u32, race u8, …
 /// position  id varint, absolute: 2 bytes | else: flags u8, [u8 if flags &amp; 1]; then x y z f32
 /// removed   id varint, ≥ 2 bytes (meaning unknown)
@@ -24,9 +24,10 @@ public readonly record struct PlayerIdentity(uint EntityId, string Name, uint Pc
 /// </summary>
 public static class PlayerMessages
 {
-    /// <summary>u32 533460001. The variants <c>24 f4 cb 1f</c> / <c>26 f4 cb 1f</c> occur too, but what follows them is
-    /// unknown, so they are not anchors.</summary>
-    private static ReadOnlySpan<byte> RankAnchor => [0x21, 0xF4, 0xCB, 0x1F];
+    /// <summary>The anchor without its first (tag) byte. Only the tags <c>21</c> (u32 533460001) and <c>26</c> are
+    /// accepted: both carried a code that a screenshot matched to the rank shown in-game. <c>24</c> occurs too but is
+    /// not corroborated, so it stays unknown like every other tag.</summary>
+    private static ReadOnlySpan<byte> AnchorSuffix => [0xF4, 0xCB, 0x1F];
 
     /// <param name="isSelf">Own record layout (server id before pcId) instead of the other-player one.</param>
     public static bool TryParseIdentity(ReadOnlySpan<byte> body, bool isSelf, out PlayerIdentity identity)
@@ -113,31 +114,41 @@ public static class PlayerMessages
     }
 
     /// <summary>
-    /// Observed on Global for other players: 8 × 00, the anchor, u32 (unknown), rank u32, u32 (unknown), then nothing but
-    /// zeros, the anchor 21 or 22 bytes before the end. <paramref name="tail"/> starts after the parsed prefix, so the zero
-    /// run cannot borrow prefix bytes. An anchor that occurs more than once is ambiguous; codes above 255 are not accepted.
+    /// Observed on Global for other players: 8 × 00, the anchor (tag 21 or 26, then f4 cb 1f), u32 (unknown), rank u32,
+    /// u32 (unknown), 5 × 00, so the anchor is 21 bytes before the end; or one more byte, 00 or 01, with the anchor 22
+    /// bytes before the end. That 01 was seen on two records of one tag-26 player (code 15, whose 21-byte record ends in
+    /// 00); 01 as the 21st byte, or any other last byte, has not been seen. <paramref name="tail"/> starts after the parsed
+    /// prefix, so neither the zero run nor the tag can borrow prefix bytes. f4 cb 1f more than once, whatever the tags, is
+    /// ambiguous; codes above 255 are not accepted.
     /// </summary>
     private static uint? RankTail(ReadOnlySpan<byte> tail)
     {
-        var at = tail.IndexOf(RankAnchor);
-        if (at < 8 || tail[(at + 1)..].IndexOf(RankAnchor) >= 0 || tail.Length - at is not (21 or 22)) return null;
+        var at = tail.IndexOf(AnchorSuffix) - 1;
+        if (at < 8 || tail.LastIndexOf(AnchorSuffix) != at + 1 || tail[at] is not (0x21 or 0x26) ||
+            tail.Length - at is not (21 or 22)) return null;
         // Some real records have a small control byte (0..3) between the zero run and the anchor, e.g. AllyA=2.
         var zeroRun = !tail[(at - 8)..at].ContainsAnyExcept((byte)0);
         if (!zeroRun && at >= 9 && tail[at - 1] <= 3)
             zeroRun = !tail[(at - 9)..(at - 1)].ContainsAnyExcept((byte)0);
-        if (!zeroRun || tail[(at + 16)..].ContainsAnyExcept((byte)0)) return null;
+        var rest = tail[(at + 16)..];
+        if (tail[at] == 0x26 && rest.Length == 6 && rest[^1] == 1) rest = rest[..^1]; // 01 observed only for 22-byte tag 26
+        if (!zeroRun || rest.ContainsAnyExcept((byte)0)) return null;
         var code = Wire.U32(tail, at + 8);
         return code <= 255 ? code : null;
     }
 
     /// <summary>
-    /// NOT a rank table. These are observations for two codes only, each matched to the rank shown in-game on a
-    /// screenshot; every other code keeps its number without a name until it is corroborated the same way.
+    /// NOT a full rank table. These are observations for five codes, each matched to the rank shown in-game on a
+    /// screenshot; every other code keeps its number without a name until it is corroborated the same way. 15 was seen
+    /// with tag 21 (one player) and tag 26 (another), 16 with tag 21 (one player); the name does not depend on the tag.
     /// </summary>
     private static string? RankName(uint? code) => code switch
     {
         19 => "Trainee",
         17 => "Eighth-Class Soldier",
+        16 => "Seventh-Class Soldier",
+        15 => "Sixth-Class Soldier",
+        14 => "Fifth-Class Soldier",
         _ => null,
     };
 }

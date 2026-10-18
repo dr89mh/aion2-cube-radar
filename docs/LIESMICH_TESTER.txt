@@ -50,9 +50,12 @@ Einstellungen
 
 Gegneranzeige ab 0.9.0 (erste Testversion)
   - Rote Rauten fuer Spieler der Gegenfraktion; darunter Name, Fraktion und PvP-/Abyss-Rang.
+  - Ab 0.9.1 steht die Soldatenklasse 1-9 DIREKT IN der Raute, T fuer Trainee und ? fuer unbekannt.
+    Name/Entfernung daneben; der ausgeschriebene Rang und das Annahme-Sternchen bleiben in der Liste.
   - Zahnrad -> Gegner -> Eigene Fraktion: Elyos oder Asmodier waehlen, falls Automatisch noch keine
     eigene Charakterinfo empfangen hat. Unbekannte Fraktionen werden nicht als Gegner eingestuft.
-  - 19 = Trainee und 17 = Eighth-Class Soldier wurden mit Screenshots abgeglichen.
+  - 19 = Trainee, 17 = Eighth-Class Soldier, 16 = Seventh-Class Soldier, 15 = Sixth-Class Soldier und 14 = Fifth-Class Soldier
+    wurden mit Screenshots abgeglichen.
     Weitere Rangnamen folgen vorlaeufig der Annahme: kleinere Codes = hoeherer Rang. Sie tragen *.
   - ~ / ungefaehr vor einer Entfernung: eigene oder gegnerische Position alt/geschaetzt; Richtung unsicher.
   - Gegneranzeige unter Zahnrad abschaltbar; die Cube-Funktionen bleiben erhalten.

@@ -6,7 +6,8 @@ const vm = require('node:vm');
 
 function browser() {
   const nodes = new Map(), calls = [];
-  const canvas = new Proxy({}, { get: (_, name) => (...args) => calls.push([name, ...args]), set: () => true });
+  const canvas = new Proxy({}, { get: (_, name) => (...args) => calls.push([name, ...args]),
+    set: (_, name, value) => { calls.push(['set:' + name, value]); return true; } });
   const document = {
     documentElement: {}, activeElement: null,
     querySelectorAll: () => [],
@@ -95,4 +96,33 @@ test('enemy display can be disabled without disabling cubes', () => {
   assert.equal(b.document.getElementById('enemy-list').innerHTML, '');
   assert.match(b.document.getElementById('enemy-empty').textContent, /ausgeschaltet/);
   assert.equal(b.document.getElementById('count').textContent, '');
+});
+
+test('all soldier classes and trainee are drawn as centered single-character badges', () => {
+  for (const [rankCode, symbol] of [[19, 'T'], [18, '9'], [17, '8'], [16, '7'], [15, '6'],
+    [14, '5'], [13, '4'], [12, '3'], [11, '2'], [10, '1'], [null, '?'], [9, '?'], [1, '?'], [20, '?']]) {
+    const b = browser();
+    b.update([contact({ rankCode, rankName: null })]);
+    assert.ok(b.calls.some(c => c[0] === 'fillText' && c[1] === symbol), `code ${rankCode} -> ${symbol}`);
+    assert.ok(b.calls.some(c => c[0] === 'set:textAlign' && c[1] === 'center'));
+    assert.ok(b.calls.some(c => c[0] === 'set:textBaseline' && c[1] === 'middle'));
+    assert.ok(!b.calls.some(c => c[0] === 'fillText' && String(c[1]).includes(`R${rankCode}`)));
+  }
+});
+
+test('badges stay visible when crowded names are suppressed and are painted over text labels', () => {
+  const b = browser();
+  b.update([contact(), contact({ name: 'Nearby', rankCode: 19, rankName: 'Trainee', rankSymbol: 'T' })]);
+  assert.ok(b.calls.some(c => c[0] === 'fillText' && c[1] === '8'));
+  assert.ok(b.calls.some(c => c[0] === 'fillText' && c[1] === 'T'));
+  const nameIndex = b.calls.findIndex(c => c[0] === 'fillText' && String(c[1]).includes('EnemyB'));
+  const badgeIndex = b.calls.findIndex(c => c[0] === 'fillText' && c[1] === '8');
+  assert.ok(badgeIndex > nameIndex);
+});
+
+test('invalid API badge strings fall back to the class mapping', () => {
+  const b = browser();
+  b.update([contact({ rankSymbol: 'R17' })]);
+  assert.ok(b.calls.some(c => c[0] === 'fillText' && c[1] === '8'));
+  assert.ok(!b.calls.some(c => c[0] === 'fillText' && c[1] === 'R17'));
 });

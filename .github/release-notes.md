@@ -12,6 +12,8 @@ Mini-Radar für Aion 2 (Global): Hidden Cubes mit Entfernung, Richtung und Höhe
 
 **Gegneranzeige:** Unter **⚙ → Gegner → Eigene Fraktion** Elyos oder Asmodier wählen, falls „Automatisch“ noch keine eigene Charakterinfo empfangen hat. `*` kennzeichnet angenommene Rangnamen, `~`/`≈` eine geschätzte Entfernung. Die Rangfolge ist noch keine vollständig verifizierte Tabelle.
 
+Ab **0.9.1** steht die Klasse **1–9 direkt im roten Symbol**, **T** für Trainee und **?** für eine unbekannte Klasse. Name und Entfernung stehen daneben; der volle Rang bleibt in der Liste.
+
 - **Voraussetzungen:** Windows 10/11 (64 Bit), [Npcap](https://npcap.com) (Installer mit Standardoptionen), Aion 2 Global im Fenster- oder randlosen Vollbildmodus
 - **SmartScreen:** Die exe ist nicht signiert. Meldet Windows eine unbekannte App: „Weitere Informationen“ → „Trotzdem ausführen“.
 - **Bedienung:** siehe die [Anleitung](https://github.com/{{REPO}}/blob/{{TAG}}/docs/ANLEITUNG.md)

@@ -139,7 +139,7 @@ internal sealed class SettingsForm : Form
             faction.SelectedIndexChanged += (_, _) => setFaction(values[faction.SelectedIndex]);
             Row("Eigene Fraktion", faction);
         }
-        Full(new Label { Text = "Nur sicher zugeordnete Gegner. Rang 19/17 per Screenshot beobachtet; * = angenommene Rangfolge. " +
+        Full(new Label { Text = "Nur sicher zugeordnete Gegner. Rang 19/17/16/15/14 per Screenshot beobachtet; * = angenommene Rangfolge. " +
                                 "Bei Start mitten in der Sitzung ggf. eigene Fraktion wählen.",
             AutoSize = true, ForeColor = Muted, MaximumSize = new Size(420, 0), Margin = new Padding(0, 0, 0, 4) });
 

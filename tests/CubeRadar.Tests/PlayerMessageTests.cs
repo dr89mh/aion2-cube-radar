@@ -10,6 +10,9 @@ namespace CubeRadar.Tests;
 public class PlayerMessageTests
 {
     private static readonly byte[] Anchor = [0x21, 0xF4, 0xCB, 0x1F];
+    private static readonly byte[] AcceptedTags = [0x21, 0x26];
+
+    private static byte[] Tagged(int tag) => [(byte)tag, 0xF4, 0xCB, 0x1F];
 
     private static byte[] U16(ushort v)
     {
@@ -238,13 +241,19 @@ public class PlayerMessageTests
     }
 
     [Theory]
-    [InlineData(19, 5, "Trainee")]
-    [InlineData(19, 6, "Trainee")]
-    [InlineData(17, 5, "Eighth-Class Soldier")]
-    [InlineData(17, 6, "Eighth-Class Soldier")]
-    public void Observed_rank_codes_are_named(int code, int zeros, string name)
+    [InlineData(19, 0x21, 5, "Trainee")]
+    [InlineData(19, 0x21, 6, "Trainee")]
+    [InlineData(17, 0x21, 5, "Eighth-Class Soldier")]
+    [InlineData(17, 0x21, 6, "Eighth-Class Soldier")]
+    [InlineData(16, 0x21, 5, "Seventh-Class Soldier")]
+    [InlineData(15, 0x21, 5, "Sixth-Class Soldier")]
+    [InlineData(15, 0x26, 5, "Sixth-Class Soldier")]
+    [InlineData(15, 0x26, 6, "Sixth-Class Soldier")]
+    [InlineData(14, 0x21, 5, "Fifth-Class Soldier")]
+    [InlineData(14, 0x26, 5, "Fifth-Class Soldier")]
+    public void Observed_rank_codes_are_named(int code, int tag, int zeros, string name)
     {
-        var p = Parse(Other(5, 1, 1, RankTail((uint)code, zeros)), false);
+        var p = Parse(Other(5, 1, 1, RankTail((uint)code, zeros, anchor: Tagged(tag))), false);
         Assert.Equal((uint?)code, p.RankCode);
         Assert.Equal(name, p.RankName);
         Assert.Equal(PlayerFaction.Elyos, p.Faction);
@@ -254,15 +263,62 @@ public class PlayerMessageTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    [InlineData(16)]
+    [InlineData(13)]
     [InlineData(18)]
     [InlineData(20)]
     [InlineData(255)]
     public void Other_rank_codes_keep_the_number_but_no_name(int code)
     {
-        var p = Parse(Other(5, 1, 1, RankTail((uint)code)), false);
-        Assert.Equal((uint?)code, p.RankCode);
-        Assert.Null(p.RankName);
+        foreach (var tag in AcceptedTags)
+        {
+            var p = Parse(Other(5, 1, 1, RankTail((uint)code, anchor: Tagged(tag))), false);
+            Assert.Equal((uint?)code, p.RankCode);
+            Assert.Null(p.RankName);
+        }
+    }
+
+    /// <summary>Anchor-to-end length × last byte, everything between the fields and the last byte zero. Observed: 21 bytes
+    /// ending in 00, 22 bytes ending in 00, and 22 bytes ending in 01 (tag 26, code 15).</summary>
+    [Theory]
+    [InlineData(0x21, 21, 0, true)]
+    [InlineData(0x21, 21, 1, false)]
+    [InlineData(0x21, 21, 2, false)]
+    [InlineData(0x21, 22, 0, true)]
+    [InlineData(0x21, 22, 1, false)]
+    [InlineData(0x21, 22, 2, false)]
+    [InlineData(0x21, 23, 0, false)]
+    [InlineData(0x21, 23, 1, false)]
+    [InlineData(0x21, 23, 2, false)]
+    [InlineData(0x26, 21, 0, true)]
+    [InlineData(0x26, 21, 1, false)]
+    [InlineData(0x26, 21, 2, false)]
+    [InlineData(0x26, 22, 0, true)]
+    [InlineData(0x26, 22, 1, true)]
+    [InlineData(0x26, 22, 2, false)]
+    [InlineData(0x26, 23, 0, false)]
+    [InlineData(0x26, 23, 1, false)]
+    [InlineData(0x26, 23, 2, false)]
+    public void Suffix_length_and_last_byte_are_bounded(int tag, int length, int last, bool accepted)
+    {
+        byte[] tail = [.. RankTail(15, zeros: length - 17, anchor: Tagged(tag)), (byte)last];
+        Assert.Equal(length, tail.Length - tail.AsSpan().IndexOf(Tagged(tag)));
+        var p = Parse(Other(5, 1, 1, tail), false);
+        Assert.Equal(accepted ? 15u : (uint?)null, p.RankCode);
+        Assert.Equal(accepted ? "Sixth-Class Soldier" : null, p.RankName);
+        Assert.Equal(PlayerFaction.Elyos, p.Faction);
+    }
+
+    [Fact]
+    public void Only_tags_21_and_26_are_accepted()
+    {
+        for (var tag = 0; tag <= 255; tag++)
+        {
+            var expected = tag is 0x21 or 0x26 ? 15u : (uint?)null;
+            var p = Parse(Other(5, 1, 1, RankTail(15, anchor: Tagged(tag))), false);
+            Assert.True(p.RankCode == expected, $"tag {tag:x2}");
+            p = Parse(Other(5, 1, 1, [.. RankTail(15, anchor: Tagged(tag)), 0x01]), false);
+            Assert.True(p.RankCode == (tag == 0x26 ? 15u : (uint?)null), $"tag {tag:x2}, 22 bytes ending in 01");
+        }
     }
 
     [Theory]
@@ -273,12 +329,15 @@ public class PlayerMessageTests
     [InlineData(4, false)]
     public void Small_control_byte_between_zero_run_and_rank_anchor_is_bounded(int control, bool accepted)
     {
-        var tail = RankTail(18);
-        var at = tail.AsSpan().IndexOf(Anchor);
-        byte[] withControl = [.. tail[..at], (byte)control, .. tail[at..]];
-        var p = Parse(Other(5, 1, 1, withControl), false);
-        Assert.Equal(accepted ? 18u : (uint?)null, p.RankCode);
-        Assert.Null(p.RankName);
+        foreach (var tag in AcceptedTags)
+        {
+            var tail = RankTail(18, anchor: Tagged(tag));
+            var at = tail.AsSpan().IndexOf(Tagged(tag));
+            byte[] withControl = [.. tail[..at], (byte)control, .. tail[at..]];
+            var p = Parse(Other(5, 1, 1, withControl), false);
+            Assert.Equal(accepted ? 18u : (uint?)null, p.RankCode);
+            Assert.Null(p.RankName);
+        }
     }
 
     [Theory]
@@ -288,18 +347,27 @@ public class PlayerMessageTests
     [InlineData(uint.MaxValue)]
     public void Rank_codes_above_255_are_not_accepted(uint code)
     {
-        var p = Parse(Other(5, 1, 1, RankTail(code)), false);
-        Assert.Null(p.RankCode);
-        Assert.Null(p.RankName);
+        foreach (var tag in AcceptedTags)
+        {
+            var p = Parse(Other(5, 1, 1, RankTail(code, anchor: Tagged(tag))), false);
+            Assert.Null(p.RankCode);
+            Assert.Null(p.RankName);
+            p = Parse(Other(5, 1, 1, [.. RankTail(code, anchor: Tagged(tag)), 0x01]), false);
+            Assert.Null(p.RankCode);
+        }
     }
 
     [Fact]
     public void Self_rank_stays_unknown()
     {
-        var p = Parse(Self(1500, 5, 1, RankTail(19)), true);
-        Assert.Null(p.RankCode);
-        Assert.Null(p.RankName);
-        Assert.Equal(PlayerFaction.Elyos, p.Faction);
+        foreach (var tag in AcceptedTags)
+        {
+            var p = Parse(Self(1500, 5, 1, RankTail(15, anchor: Tagged(tag))), true);
+            Assert.Null(p.RankCode);
+            Assert.Null(p.RankName);
+            Assert.Equal(PlayerFaction.Elyos, p.Faction);
+            Assert.Null(Parse(Self(1500, 5, 1, [.. RankTail(15, anchor: Tagged(tag)), 0x01]), true).RankCode);
+        }
     }
 
     public static TheoryData<string, byte[]> FalseTails => new()
@@ -307,15 +375,37 @@ public class PlayerMessageTests
         { "no tail", [] },
         { "anchor 20 bytes before the end", RankTail(19, zeros: 4) },
         { "anchor 23 bytes before the end", RankTail(19, zeros: 7) },
+        { "tag 26, anchor 20 bytes before the end", RankTail(15, zeros: 4, anchor: Tagged(0x26)) },
+        { "tag 26, anchor 23 bytes before the end", RankTail(15, zeros: 7, anchor: Tagged(0x26)) },
         { "cut by one byte", RankTail(19)[..^1] },
         { "cut inside the fields", RankTail(19)[..^8] },
         { "only 7 zero bytes before the anchor", RankTail(19, gap: 7) },
-        { "non-zero last byte", [.. RankTail(19, zeros: 4), 0x01] },
+        { "tag 26, only 7 zero bytes before the anchor", RankTail(15, gap: 7, anchor: Tagged(0x26)) },
+        { "21 bytes ending in 01", [.. RankTail(19, zeros: 4), 0x01] },
+        { "tag 26, 21 bytes ending in 01", [.. RankTail(15, zeros: 4, anchor: Tagged(0x26)), 0x01] },
         { "non-zero byte right after the fields", [.. RankTail(19, zeros: 0), 0x01, 0, 0, 0, 0] },
-        { "variant 24 f4 cb 1f", RankTail(19, anchor: [0x24, 0xF4, 0xCB, 0x1F]) },
-        { "variant 26 f4 cb 1f", RankTail(19, anchor: [0x26, 0xF4, 0xCB, 0x1F]) },
+        { "22 bytes ending in 01, another 01 before it", [.. RankTail(15, zeros: 4, anchor: Tagged(0x26)), 0x01, 0x01] },
+        { "22 bytes ending in 01, 01 right after the fields",
+            [.. RankTail(15, zeros: 0, anchor: Tagged(0x26)), 0x01, 0, 0, 0, 0, 0x01] },
+        { "22 bytes ending in ff", [.. RankTail(15, anchor: Tagged(0x26)), 0xFF] },
+        { "23 bytes ending in 01 01", [.. RankTail(15, anchor: Tagged(0x26)), 0x01, 0x01] },
+        { "variant 24 f4 cb 1f", RankTail(19, anchor: Tagged(0x24)) },
+        { "variant 25 f4 cb 1f", RankTail(19, anchor: Tagged(0x25)) },
+        { "variant 27 f4 cb 1f", RankTail(19, anchor: Tagged(0x27)) },
+        { "variant 24, 22 bytes ending in 01", [.. RankTail(15, anchor: Tagged(0x24)), 0x01] },
         { "anchor also earlier in the body", [.. Synth.Body(10, 9), .. Anchor, .. RankTail(19)] },
+        { "tag 26 twice", [.. Synth.Body(10, 9), .. Tagged(0x26), .. RankTail(15, anchor: Tagged(0x26))] },
+        { "tag 26 earlier, tag 21 at the end", [.. Synth.Body(10, 9), .. Tagged(0x26), .. RankTail(19)] },
+        { "tag 21 earlier, tag 26 at the end", [.. Synth.Body(10, 9), .. Anchor, .. RankTail(15, anchor: Tagged(0x26))] },
+        { "variant 24 earlier", [.. Synth.Body(10, 9), .. Tagged(0x24), .. RankTail(19)] },
+        { "variant 24 earlier, tag 26 at the end",
+            [.. Synth.Body(10, 9), .. Tagged(0x24), .. RankTail(15, anchor: Tagged(0x26))] },
+        { "f4 cb 1f after an odd byte earlier", [.. Synth.Body(10, 9), 0xF4, 0xCB, 0x1F, .. RankTail(19)] },
+        { "f4 cb 1f inside the u32 after the anchor",
+            [.. Synth.Body(12, 3), .. new byte[8], .. Tagged(0x26), 0x00, 0xF4, 0xCB, 0x1F, .. U32(15), .. U32(0x0102),
+                0, 0, 0, 0, 0] },
         { "anchor right after the prefix", [.. Anchor, .. RankTail(19)] },
+        { "tag 26 right after the prefix", [.. Tagged(0x26), .. RankTail(15, anchor: Tagged(0x26))] },
     };
 
     [Theory]
@@ -329,16 +419,25 @@ public class PlayerMessageTests
         Assert.Equal("Xxxxx", p.Name);
     }
 
-    [Fact]
-    public void Rank_tail_must_not_reach_into_the_prefix()
+    [Theory]
+    [InlineData(0x21, 19)]
+    [InlineData(0x26, 15)]
+    public void Rank_tail_must_not_reach_into_the_prefix(int tag, int code)
     {
         // pcId 0, race 0, gender 0 end the prefix with six zero bytes; two more give the anchor eight zeros before it.
-        byte[] tail = [0, 0, .. Anchor, .. U32(0xDEAD), .. U32(19), .. U32(0x0102), 0, 0, 0, 0, 0];
+        byte[] tail = [0, 0, .. Tagged(tag), .. U32(0xDEAD), .. U32((uint)code), .. U32(0x0102), 0, 0, 0, 0, 0];
         var p = Parse(Other(0, 0, 0, tail), false);
         Assert.Null(p.RankCode);
         Assert.Equal(PlayerFaction.Unknown, p.Faction);
         // With the whole zero run after the prefix the same tail is accepted.
-        Assert.Equal((uint?)19, Parse(Other(0, 0, 0, [.. new byte[6], .. tail]), false).RankCode);
+        Assert.Equal((uint?)code, Parse(Other(0, 0, 0, [.. new byte[6], .. tail]), false).RankCode);
+        // The tag cannot be the last prefix byte (gender) either.
+        Assert.Null(Parse(Other(0, 0, (byte)tag, tail[3..]), false).RankCode);
+        // The anchor bytes inside the prefix (here the pcId) are not searched, so they are no second occurrence.
+        var pcId = BinaryPrimitives.ReadUInt32LittleEndian(Tagged(tag));
+        p = Parse(Other(pcId, 0, 0, [.. new byte[6], .. tail]), false);
+        Assert.Equal((uint?)code, p.RankCode);
+        Assert.Equal(pcId, p.PcId);
     }
 
     [Theory]

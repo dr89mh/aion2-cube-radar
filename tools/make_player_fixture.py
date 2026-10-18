@@ -10,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 
-from a2wire import varint
+from a2wire import load_jsonl, varint
 from playerprobe import parse_identity
 
 
@@ -44,6 +44,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--names", required=True, type=Path, help="private name/alias/ground-truth JSON map")
+    parser.add_argument("--frames", action="append", type=Path, help="decoded JSONL input; repeat for multiple captures")
     parser.add_argument("--out", type=Path, default=root / "fixtures/players/2026-10-18_abyss.json")
     args = parser.parse_args()
     output = args.out
@@ -51,13 +52,18 @@ def main():
         raise SystemExit(f"Refusing to overwrite {output}")
     labels = json.loads(args.names.read_text(encoding="utf-8"))
     selected = []
-    for folder in ("20261018_201957", "20261018_203833"):
-        source = root / "captures" / folder / "frames.jsonl"
+    sources = args.frames or [root / "captures" / folder / "frames.jsonl"
+                              for folder in ("20261018_201957", "20261018_203833")]
+    for source in sources:
+        folder = source.parent.name
+        try:
+            public_source = str(source.resolve().relative_to(root))
+        except ValueError:
+            public_source = source.name # do not leak a private absolute path in public fixtures
         identities = {}
         identity_counts = {}
         movement = set()
-        for line in source.open(encoding="utf-8"):
-            f = json.loads(line)
+        for f in load_jsonl(str(source), ("frame",)):
             if f.get("type") != "frame":
                 continue
             b = bytes.fromhex(f["hex"])
@@ -83,17 +89,21 @@ def main():
                     movement.add(key)
             if keep:
                 alias = labels[name]["alias"]
-                selected.append({"source": str(source.relative_to(root)), "t": f["t"], "op": f["op"],
+                selected.append({"source": public_source, "t": f["t"], "op": f["op"],
                                  "name": alias, "hex": public_body(f["op"], b, alias).hex()})
     public_labels = {v["alias"]: {k: v.get(k) for k in ("faction", "rankCode", "rankName", "markerMs")}
                      for v in labels.values()}
+    for value in labels.values():
+        if value.get("screenshot"):
+            public_labels[value["alias"]].update(screenshot=Path(value["screenshot"]).name,
+                                                screenshotMs=value.get("screenshotMs"))
     result = {"note": "Derived from real Global records. Names pseudonymised with byte lengths preserved. Identity "
                       "prefix/last32 bytes retained, private middle zero-filled; kill records retain victim id/u32 only. "
                       "Only marker-labelled enemies have screenshot corroboration; other metadata are observations.",
               "anonymized": True, "labels": public_labels, "frames": selected}
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(f"{output}: {len(selected)} real records")
+    print(f"{output}: {len(selected)} minimised records")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ Internetverbindung ist die abschaltbare Update-Suche bei GitHub (nur die fertige
   dir), Ton bei jedem neuen Cube
 - **Status je Cube:** sichtbar, außer Sicht, wird geöffnet, geöffnet, weg
 - **Gegner im selben Radar:** rote Rauten und eine Liste mit Name, Fraktion, PvP-Rang und Entfernung (Global/Abyss,
-  erste Testversion). Zwei Rang-Codes sind mit Screenshots abgeglichen; die angenommene Rangfolge ist mit `*` markiert.
+  erste Testversion). Fünf Rang-Codes sind mit Screenshots abgeglichen; die übrige angenommene Rangfolge ist mit `*` markiert.
 - **Web-Ansicht** mit Karte, Liste und eigener Spot-Datenbank (Export als CSV/JSON)
 - **Eine exe** für Windows 10/11 ohne Installation, aktualisiert sich auf Klick selbst
 - Bestätigt in **Verteron**; in anderen Gebieten lernt das Radar die Cube-Kennung selbst
@@ -181,13 +181,33 @@ noch fehlen kann. Für Asmodier `--faction Asmodian` verwenden.
 
 - Nur Spieler der sicher erkannten Gegenfraktion erscheinen als Gegner, keine geratenen Entity-/Server-Zuordnungen.
 - Rote Rauten zeigen frische Positionen; darunter stehen die nächsten drei Gegner mit Fraktion und Rang.
-- 19 = Trainee und 17 = Eighth-Class Soldier sind per Screenshot beobachtet. Die übrige Zählweise
+- Ab **0.9.1** steht die Soldatenklasse **1–9 direkt in der Raute**, **T** für Trainee und **?** für unbekannt.
+  Name und Entfernung stehen daneben; die Liste behält den ausgeschriebenen Rang und das Annahme-Sternchen.
+- 19 = Trainee, 17 = Eighth-Class Soldier, 16 = Seventh-Class Soldier, 15 = Sixth-Class Soldier und
+  14 = Fifth-Class Soldier sind per Screenshot beobachtet. Die übrige Zählweise
   (18 = Ninth-Class Soldier … 10 = First-Class Soldier; kleinere Codes = höherer Rang) ist eine **Annahme** (`*`).
 - Unbekannte Paketvarianten zeigen **„Rang unbekannt“**. Es werden keine Web-Profile abgefragt.
 - Positionsdaten können verzögert eintreffen. Nach 10 s ohne Positionsupdate verschwindet der Live-Punkt;
   die Liste kennzeichnet alte Positionen. Entfernte/getötete Gegner und Kontakte vor Teleports werden verworfen.
 - Ist die eigene Position alt oder geschätzt, sind auch Richtungen/Entfernungen unsicher; die Entfernung trägt `~`/`≈`.
 - Unter ⚙ lässt sich die zusätzliche Gegneranzeige abschalten; die Cube-Funktion bleibt erhalten.
+
+Rangzuordnung, sofern der Code aus einer unterstützten Paketvariante gelesen werden kann:
+
+| Code | PvP-/Abyss-Rang | Im Symbol |
+|---:|---|:---:|
+| 19 | Trainee | T |
+| 18 | Ninth-Class Soldier * | 9 |
+| 17 | Eighth-Class Soldier | 8 |
+| 16 | Seventh-Class Soldier | 7 |
+| 15 | Sixth-Class Soldier | 6 |
+| 14 | Fifth-Class Soldier | 5 |
+| 13 | Fourth-Class Soldier * | 4 |
+| 12 | Third-Class Soldier * | 3 |
+| 11 | Second-Class Soldier * | 2 |
+| 10 | First-Class Soldier * | 1 |
+
+`*` = aus der freigegebenen Zählfolge abgeleitet, noch nicht separat fotografisch bestätigt.
 
 ## Aufnehmen
 
