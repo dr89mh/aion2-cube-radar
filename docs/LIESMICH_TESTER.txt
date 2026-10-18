@@ -48,6 +48,17 @@ Einstellungen
   Position zuruecksetzen, Web-Ansicht oeffnen (grosse Karte und Liste im Browser), Aufnahmen-Ordner oeffnen,
   Radar beenden. Aenderungen wirken sofort.
 
+Gegneranzeige ab 0.9.0 (erste Testversion)
+  - Rote Rauten fuer Spieler der Gegenfraktion; darunter Name, Fraktion und PvP-/Abyss-Rang.
+  - Zahnrad -> Gegner -> Eigene Fraktion: Elyos oder Asmodier waehlen, falls Automatisch noch keine
+    eigene Charakterinfo empfangen hat. Unbekannte Fraktionen werden nicht als Gegner eingestuft.
+  - 19 = Trainee und 17 = Eighth-Class Soldier wurden mit Screenshots abgeglichen.
+    Weitere Rangnamen folgen vorlaeufig der Annahme: kleinere Codes = hoeherer Rang. Sie tragen *.
+  - ~ / ungefaehr vor einer Entfernung: eigene oder gegnerische Position alt/geschaetzt; Richtung unsicher.
+  - Gegneranzeige unter Zahnrad abschaltbar; die Cube-Funktionen bleiben erhalten.
+  - Ab 0.9.0 zeigt die Update-Suche auf dr89mh/aion2-cube-radar. Aeltere Builds pruefen ggf. noch das
+    urspruengliche Repository: diese Version einmal manuell herunterladen, altes Radar beenden und ersetzen.
+
 Testauftrag (ca. 15-20 Minuten in Verteron oder Altgard)
   1. In ein Gebiet mit vielen Cube-Spots laufen.
   2. Wenn das Radar piept: Entfernung und Richtung merken. Erst wenn du den Cube im Spiel WIRKLICH siehst:

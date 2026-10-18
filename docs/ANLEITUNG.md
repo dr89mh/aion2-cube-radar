@@ -17,7 +17,7 @@ GitHub, und die lässt sich abschalten (siehe [Updates](#8-updates)).
 
 ## 2. Starten und beenden
 
-1. Unter [Releases](https://github.com/dennisreichenberg/aion2-cube-radar/releases/latest) `Cube.Radar.exe`
+1. Unter [Releases](https://github.com/dr89mh/aion2-cube-radar/releases/latest) `Cube.Radar.exe`
    herunterladen und irgendwohin legen, z. B. auf den Desktop. Eine Installation ist nicht nötig.
 2. Doppelklick auf die exe. Meldet Windows SmartScreen eine unbekannte App: „Weitere Informationen“ →
    „Trotzdem ausführen“. Danach fragt Windows, ob Cube Radar Änderungen vornehmen darf: „Ja“ (Admin-Rechte, damit
@@ -71,6 +71,21 @@ nur bei Ereignissen, etwa wenn du einen Buff wirkst oder angegriffen wirst.
 
 ## 4. Bedienen
 
+### Gegneranzeige ab 0.9.0 (erste Testversion)
+
+- **Rote Rauten** stehen für zugeordnete Spieler der Gegenfraktion. Unter dem Radar stehen die nächsten drei
+  Kontakte mit Name, Fraktion und PvP-/Abyss-Rang; in der Web-Ansicht gibt es eine zusätzliche Gegnerliste.
+- Unter **⚙ → Gegner → Eigene Fraktion** Elyos oder Asmodier wählen. „Automatisch“ funktioniert erst nach einer
+  eigenen Charakterinfo; bei Start mitten in einer Sitzung kann sie fehlen. Unbekannte Fraktionen werden nicht als Gegner ausgegeben.
+- Beobachtet sind **19 = Trainee** und **17 = Eighth-Class Soldier**. Die angenommene Zählweise
+  18 = Ninth-Class Soldier … 10 = First-Class Soldier (kleinere Codes = höherer Rang) trägt **`*`**.
+  Weitere Paketvarianten können noch „Rang unbekannt“ zeigen.
+- **`~`/`≈` vor der Entfernung:** Die eigene oder gegnerische Position ist alt/geschätzt; auch die Richtung kann abweichen.
+  Ein eigener Buff kann eine frischere Position liefern. Über 10 s alte Gegnerpositionen verschwinden als Live-Punkt.
+- Unter ⚙ lässt sich die zusätzliche Gegneranzeige abschalten; das Cube-Radar bleibt erhalten.
+
+### Tasten und Sichtbarkeit
+
 - **Verschieben:** `Strg+Umschalt+F11` öffnet die Einstellungen. Solange sie offen sind, bleibt das Radar sichtbar
   und lässt sich mit der Maus ziehen. Die Stelle wird gespeichert. Noch einmal `Strg+Umschalt+F11` schließt die
   Einstellungen wieder.
@@ -101,6 +116,7 @@ sichtbar, damit du es verschieben und zoomen kannst.
   eigene `.wav`-Datei statt des Standard-Pieptons. Im Windows-Lautstärkemixer steht „Cube Radar“ als eigene App
   und lässt sich dort zusätzlich regeln oder stummschalten.
 - **Overlay:** Zoom, Größe (75–150 %), Deckkraft.
+- **Gegner:** Gegneranzeige an/aus, eigene Fraktion (Automatisch / Elyos / Asmodier).
 - **Norden:** Zeigt der Cube in eine andere Richtung als auf der Minimap im Spiel (gespiegelt oder um 90° gedreht),
   hier umstellen, bis es passt. Standard ist „−Y“.
 - **Wann ist das Overlay sichtbar?** „Nur wenn Aion 2 im Vordergrund ist“, „In Menüs ausblenden“ und „Mit
@@ -129,6 +145,8 @@ wird.
 ## 8. Updates
 
 Das Radar sucht beim Start und danach alle 6 Stunden bei GitHub nach einer neuen Version.
+Ab 0.9.0 prüft es `dr89mh/aion2-cube-radar`. Frühere Builds können noch auf das ursprüngliche Repository zeigen:
+in diesem Fall 0.9.0 einmal manuell herunterladen und bei beendetem Radar ersetzen. Einstellungen bleiben erhalten.
 
 - Gibt es eine, erscheint unten rechts ein Hinweis, und im Menü des Radar-Symbols steht „Update auf … installieren“.
   Ein Klick darauf (oder Einstellungen → „Jetzt aktualisieren“) fragt nach, lädt die neue Version, prüft ihre
@@ -140,7 +158,7 @@ Das Radar sucht beim Start und danach alle 6 Stunden bei GitHub nach einer neuen
 - **Abschalten:** Einstellungen → „Automatisch nach Updates suchen“. Dann verbindet sich das Radar gar nicht mehr mit
   dem Internet; „Jetzt prüfen“ fragt nur, wenn du es anklickst.
 - Liegt die exe in einem Ordner ohne Schreibrecht (z. B. unter „Programme“), kann sie sich nicht selbst ersetzen. Dann
-  die neue Version von der [Release-Seite](https://github.com/dennisreichenberg/aion2-cube-radar/releases/latest)
+  die neue Version von der [Release-Seite](https://github.com/dr89mh/aion2-cube-radar/releases/latest)
   herunterladen.
 
 ## 9. Probleme lösen

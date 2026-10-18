@@ -1,4 +1,4 @@
-Mini-Radar für Aion 2 (Global), das über dem Spiel anzeigt, wo gerade Hidden Cubes (versteckte Würfel) stehen: Entfernung, Richtung und Höhe. Es liest den Netzwerkverkehr von Aion 2 nur passiv mit, liest keinen Speicher, verändert nichts am Spiel und sendet nichts an das Spiel.
+Mini-Radar für Aion 2 (Global): Hidden Cubes mit Entfernung, Richtung und Höhe sowie gegnerische Spieler mit Fraktion und vorläufigem PvP-/Abyss-Rang. Es liest den Netzwerkverkehr von Aion 2 nur passiv mit, liest keinen Speicher, verändert nichts am Spiel und sendet nichts an das Spiel.
 
 ## Neu in {{VERSION}}
 
@@ -6,7 +6,11 @@ Mini-Radar für Aion 2 (Global), das über dem Spiel anzeigt, wo gerade Hidden C
 
 ## Download
 
-**`Cube.Radar.exe`** unten unter „Assets“ herunterladen und doppelklicken. Eine Installation ist nicht nötig, .NET ist enthalten. Ab Version 0.8.0 meldet sich das Radar selbst, wenn es eine neue Version gibt, und aktualisiert sich auf Klick.
+**`Cube.Radar.exe`** unten unter „Assets“ herunterladen und doppelklicken. Eine Installation ist nicht nötig, .NET ist enthalten. Laufendes Radar vorher über das Tray-Symbol beenden.
+
+**Wechsel von einer älteren Version:** Diese EXE gegebenenfalls einmal manuell herunterladen; ältere Builds prüfen noch das ursprüngliche Repository. Ab 0.9.0 stammen Updates aus diesem Repository und werden nur auf Bestätigung installiert.
+
+**Gegneranzeige:** Unter **⚙ → Gegner → Eigene Fraktion** Elyos oder Asmodier wählen, falls „Automatisch“ noch keine eigene Charakterinfo empfangen hat. `*` kennzeichnet angenommene Rangnamen, `~`/`≈` eine geschätzte Entfernung. Die Rangfolge ist noch keine vollständig verifizierte Tabelle.
 
 - **Voraussetzungen:** Windows 10/11 (64 Bit), [Npcap](https://npcap.com) (Installer mit Standardoptionen), Aion 2 Global im Fenster- oder randlosen Vollbildmodus
 - **SmartScreen:** Die exe ist nicht signiert. Meldet Windows eine unbekannte App: „Weitere Informationen“ → „Trotzdem ausführen“.

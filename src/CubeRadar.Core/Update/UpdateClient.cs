@@ -23,8 +23,8 @@ public sealed class UpdateException(string message) : Exception(message);
 /// </summary>
 public sealed class UpdateClient(HttpClient http, Uri latestRelease, string assetName = UpdateClient.AssetName)
 {
-    public static readonly Uri GitHubLatest = new("https://api.github.com/repos/dennisreichenberg/aion2-cube-radar/releases/latest");
-    public const string ReleasesPage = "https://github.com/dennisreichenberg/aion2-cube-radar/releases";
+    public static readonly Uri GitHubLatest = new("https://api.github.com/repos/dr89mh/aion2-cube-radar/releases/latest");
+    public const string ReleasesPage = "https://github.com/dr89mh/aion2-cube-radar/releases";
 
     /// <summary>GitHub turns the space in "Cube Radar.exe" into a dot when it is uploaded.</summary>
     public const string AssetName = "Cube.Radar.exe";

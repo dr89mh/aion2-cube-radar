@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][string]$Tag,
     [Parameter(Mandatory)][string]$Exe,
     [string]$Out = "dist\release-notes.md",
-    [string]$Repo = $(if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "dennisreichenberg/aion2-cube-radar" })
+    [string]$Repo = $(if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "dr89mh/aion2-cube-radar" })
 )
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 # git prints UTF-8 (umlauts in tag messages)

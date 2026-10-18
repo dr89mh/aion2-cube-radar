@@ -25,6 +25,13 @@ public class UpdateTests
         """;
 
     [Fact]
+    public void Default_update_links_point_to_this_repository()
+    {
+        Assert.Equal("https://api.github.com/repos/dr89mh/aion2-cube-radar/releases/latest", UpdateClient.GitHubLatest.AbsoluteUri);
+        Assert.Equal("https://github.com/dr89mh/aion2-cube-radar/releases", UpdateClient.ReleasesPage);
+    }
+
+    [Fact]
     public void Parse_reads_version_page_asset_and_digest()
     {
         var r = UpdateClient.Parse(ReleaseJson(digest: "sha256:" + NewExeSha.ToUpperInvariant()))!;

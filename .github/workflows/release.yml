@@ -42,6 +42,12 @@ jobs:
       - name: Test
         run: dotnet test CubeRadar.slnx -c Release --filter "Needs!=Npcap"
 
+      - name: Test offline tools and fixture privacy
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Test web UI
+        run: node --test tests/player-ui.test.cjs
+
       - name: Build Cube Radar.exe
         run: ./tools/package.ps1
 

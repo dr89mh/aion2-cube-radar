@@ -17,7 +17,7 @@ Internetverbindung ist die abschaltbare Update-Suche bei GitHub (nur die fertige
 
 ## Download
 
-Fertige Version für Windows 10/11 (64 Bit): unter [**Releases**](https://github.com/dennisreichenberg/aion2-cube-radar/releases/latest)
+Fertige Version für Windows 10/11 (64 Bit): unter [**Releases**](https://github.com/dr89mh/aion2-cube-radar/releases/latest)
 die Datei `Cube.Radar.exe` herunterladen und doppelklicken. Eine Installation ist nicht nötig, .NET ist enthalten.
 Voraussetzung ist [Npcap](https://npcap.com) (Installer mit Standardoptionen). Beim Start fragt Windows nach
 Admin-Rechten, damit das Overlay die Alt-Taste erkennt (abschaltbar, siehe unten). Wie man das Mini-Radar liest und
@@ -32,7 +32,7 @@ eine neue Version gibt, und aktualisiert sich auf Klick ([Updates](docs/ANLEITUN
 Cube Radar is a hidden cube finder for **Aion 2 (Global)**: a small radar overlay on top of the game that shows live
 where **Hidden Cubes** are, with distance, direction and height. It passively reads the game's network traffic via
 Npcap, like Wireshark. No memory reading, no injection, nothing is sent to the game. Windows 10/11, a single exe, no
-installation: download `Cube.Radar.exe` from [Releases](https://github.com/dennisreichenberg/aion2-cube-radar/releases/latest)
+installation: download `Cube.Radar.exe` from [Releases](https://github.com/dr89mh/aion2-cube-radar/releases/latest)
 and install [Npcap](https://npcap.com) first. The user interface and the guide are in German for now.
 
 > **Warning:** According to another tool author, NCSOFT support considers software that reads game data a violation
@@ -170,6 +170,9 @@ Replay zum Testen: `.\cuberadar.cmd radar --replay captures\<sitzung>\raw.pcapng
 hält der Replay bei Sekunde 200 des Mitschnitts an.
 
 ### Gegner-Fraktion und PvP-/Abyss-Ränge (Testversion)
+
+Ab **0.9.0**. Beim Wechsel von einer älteren EXE diese Version einmal manuell aus diesem Repository herunterladen;
+frühere Builds können noch das ursprüngliche Repository auf Updates prüfen. Ab 0.9.0 zeigt die Update-Suche hierher.
 
 Für Elyos: `.\cuberadar.cmd radar --overlay-only --faction Elyos`.
 Die Wahl wird gespeichert; wechseln kannst du unter **⚙ → Gegner → Eigene Fraktion** oder in der Web-Ansicht
