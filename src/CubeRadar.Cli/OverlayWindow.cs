@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -25,6 +26,8 @@ internal sealed class OverlayWindow : Form
     private const int WsExLayered = 0x80000, WsExToolWindow = 0x80, WsExNoActivate = 0x08000000, WsExTopmost = 0x8;
     private const int WmNcHitTest = 0x84, WmMouseActivate = 0x21, WmExitSizeMove = 0x232, HtCaption = 2, MaNoActivate = 3;
     private const int CursorShowing = 0x1, VkMenu = 0x12;
+    private const byte AcSrcAlpha = 0x1;
+    private const int UlwAlpha = 0x2;
     private static readonly IntPtr HwndTopmost = new(-1);
     public static readonly int[] Ranges = [60, 120, 250];
 
@@ -133,8 +136,37 @@ internal sealed class OverlayWindow : Form
     public void ApplySettings()
     {
         Size = OverlayRenderer.Measure(RenderScale, _settings.ShowEnemies);
-        Opacity = Math.Clamp(_settings.OverlayOpacityPct, 40, 100) / 100.0;
-        Invalidate();
+        Redraw();
+    }
+
+    /// <summary>
+    /// Paints the overlay into a bitmap and hands it to Windows with per-pixel alpha (UpdateLayeredWindow), so the radar
+    /// and the enemy list below it each get their own opacity. A window updated this way does not use WM_PAINT.
+    /// </summary>
+    private void Redraw()
+    {
+        var size = ClientSize;
+        if (!IsHandleCreated || size.Width <= 0 || size.Height <= 0) return;
+        using var frame = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(frame))
+            OverlayRenderer.Render(g, size, _last, RenderScale, _settings.OverlayRangeM, _settings.ShowEnemies);
+        OverlayRenderer.ApplyOpacity(frame, RenderScale, Math.Clamp(_settings.OverlayOpacityPct, 40, 100),
+            Math.Clamp(_settings.OverlayListOpacityPct ?? _settings.OverlayOpacityPct, 40, 100));
+        var bitmap = frame.GetHbitmap(Color.FromArgb(0)); // premultiplied alpha, as UpdateLayeredWindow needs it
+        var dc = CreateCompatibleDC(IntPtr.Zero);
+        var old = SelectObject(dc, bitmap);
+        try
+        {
+            var source = Point.Empty;
+            var blend = new BlendFunction { SourceConstantAlpha = 255, AlphaFormat = AcSrcAlpha };
+            UpdateLayeredWindow(Handle, IntPtr.Zero, IntPtr.Zero, ref size, dc, ref source, 0, ref blend, UlwAlpha);
+        }
+        finally
+        {
+            SelectObject(dc, old);
+            DeleteDC(dc);
+            DeleteObject(bitmap);
+        }
     }
 
     public void OpenSettings() => Ui(() =>
@@ -176,7 +208,7 @@ internal sealed class OverlayWindow : Form
         i = Math.Clamp(i + (e.Delta > 0 ? -1 : 1), 0, Ranges.Length - 1); // wheel up = zoom in
         _settings.OverlayRangeM = Ranges[i];
         _settings.Save();
-        Invalidate();
+        Redraw();
     }
 
     /// <summary>Ctrl+Shift+F10: the user's on/off switch (auto-hiding works on top of it).</summary>
@@ -192,7 +224,7 @@ internal sealed class OverlayWindow : Form
         var i = Array.IndexOf(Ranges, _settings.OverlayRangeM);
         _settings.OverlayRangeM = Ranges[(i + 1) % Ranges.Length];
         _settings.Save();
-        Invalidate();
+        Redraw();
     });
 
     public void Shutdown() => Ui(() =>
@@ -314,7 +346,7 @@ internal sealed class OverlayWindow : Form
         _last = _snapshot();
         // Some games push themselves to the top when they regain focus: re-assert every 2 s.
         if (++_ticks % 13 == 0) SetWindowPos(Handle, HwndTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
-        Invalidate();
+        Redraw();
     }
 
     private void UpdateVisibility()
@@ -324,6 +356,7 @@ internal sealed class OverlayWindow : Form
         if (show)
         {
             _last = _snapshot();
+            Redraw(); // the content must be there before the window shows
             Show(); // without activation (ShowWithoutActivation)
         }
         else Hide();
@@ -371,9 +404,6 @@ internal sealed class OverlayWindow : Form
         return now - _cursorShownSince < 300; // brief cursor flashes do not make it flicker
     }
 
-    protected override void OnPaint(PaintEventArgs e) =>
-        OverlayRenderer.Render(e.Graphics, ClientSize, _last, RenderScale, _settings.OverlayRangeM, _settings.ShowEnemies);
-
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _timer.Dispose();
@@ -390,6 +420,31 @@ internal sealed class OverlayWindow : Form
         public IntPtr Cursor;
         public Point Position;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BlendFunction
+    {
+        public byte BlendOp;
+        public byte BlendFlags;
+        public byte SourceConstantAlpha;
+        public byte AlphaFormat;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, IntPtr pptDst, ref Size psize, IntPtr hdcSrc,
+        ref Point pptSrc, int crKey, ref BlendFunction pblend, int flags);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr obj);
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorInfo(ref CursorInfo info);
@@ -653,6 +708,29 @@ internal static class OverlayRenderer
             y += 26;
         }
         g.Restore(state);
+    }
+
+    /// <summary>Scales the alpha of the radar (header and map) and of the enemy list below it to the given percentages.</summary>
+    public static void ApplyOpacity(Bitmap frame, float scale, int radarPct, int listPct)
+    {
+        var listTop = (int)Math.Round((Side + Header) * scale);
+        var data = frame.LockBits(new Rectangle(Point.Empty, frame.Size), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+        try
+        {
+            var row = new byte[frame.Width * 4];
+            for (var y = 0; y < frame.Height; y++)
+            {
+                var pct = y < listTop ? radarPct : listPct;
+                var line = data.Scan0 + y * data.Stride;
+                Marshal.Copy(line, row, 0, row.Length);
+                for (var i = 3; i < row.Length; i += 4) row[i] = (byte)(row[i] * pct / 100);
+                Marshal.Copy(row, 0, line, row.Length);
+            }
+        }
+        finally
+        {
+            frame.UnlockBits(data);
+        }
     }
 
     private sealed record MeView(double X, double Y, long AgeMs, double Ring);

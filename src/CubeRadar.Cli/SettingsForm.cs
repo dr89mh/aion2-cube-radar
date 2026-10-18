@@ -154,11 +154,20 @@ internal sealed class SettingsForm : Form
         scale.SelectedIndexChanged += (_, _) => { settings.OverlayScalePct = scales[scale.SelectedIndex]; Save(); };
         Row("Größe", scale);
 
-        var opacity = new TrackBar { Minimum = 40, Maximum = 100, TickFrequency = 10, SmallChange = 5, LargeChange = 10, Width = 200,
-            Value = Math.Clamp(settings.OverlayOpacityPct, 40, 100), BackColor = Bg };
-        var opacityText = new Label { AutoSize = true, ForeColor = Muted, Text = $"{opacity.Value} %", Margin = new Padding(6, 8, 0, 0) };
-        opacity.ValueChanged += (_, _) => { settings.OverlayOpacityPct = opacity.Value; opacityText.Text = $"{opacity.Value} %"; Save(); };
-        Row("Deckkraft", Flow(opacity, opacityText));
+        TrackBar Opacity(string label, int value, Action<int> set)
+        {
+            var bar = new TrackBar { Minimum = 40, Maximum = 100, TickFrequency = 10, SmallChange = 5, LargeChange = 10, Width = 200,
+                Value = Math.Clamp(value, 40, 100), BackColor = Bg };
+            var text = new Label { AutoSize = true, ForeColor = Muted, Text = $"{bar.Value} %", Margin = new Padding(6, 8, 0, 0) };
+            bar.ValueChanged += (_, _) => { set(bar.Value); text.Text = $"{bar.Value} %"; Save(); };
+            Row(label, Flow(bar, text));
+            return bar;
+        }
+        Opacity("Deckkraft Radar", settings.OverlayOpacityPct, v => settings.OverlayOpacityPct = v);
+        var listOpacity = Opacity("Deckkraft Namensliste", settings.OverlayListOpacityPct ?? settings.OverlayOpacityPct,
+            v => settings.OverlayListOpacityPct = v);
+        listOpacity.Enabled = enemies.Checked; // without enemies there is no list below the radar
+        enemies.CheckedChanged += (_, _) => listOpacity.Enabled = enemies.Checked;
 
         var north = Combo(Norths.Select(n => n.Text), Math.Max(0, Array.FindIndex(Norths, n => n.Value == actions.GetNorth())));
         north.SelectedIndexChanged += (_, _) => actions.SetNorth(Norths[north.SelectedIndex].Value);

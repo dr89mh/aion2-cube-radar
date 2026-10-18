@@ -28,7 +28,10 @@ internal sealed class RadarSettings
     /// <summary>Restart the overlay with admin rights, so Alt (cursor in the game) is not taken for a menu (see Elevation).</summary>
     public bool OverlayAdminRights { get; set; } = true;
     public int OverlayScalePct { get; set; } = 100;
+    /// <summary>Opacity of the radar itself (header and map), 40–100 %.</summary>
     public int OverlayOpacityPct { get; set; } = 90;
+    /// <summary>Opacity of the enemy name list below the radar, 40–100 %; null (settings from before the split) = like the radar.</summary>
+    public int? OverlayListOpacityPct { get; set; }
     /// <summary>Sound when a new cube appears.</summary>
     public bool SoundEnabled { get; set; } = true;
     /// <summary>Optional .wav played instead of the beep.</summary>

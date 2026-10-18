@@ -111,7 +111,7 @@ Im Repository:
   sofort und werden gespeichert:
   - Ton an/aus mit „Testen“, Lautstärke (beim Verstellen hörst du den Ton), optional eine eigene .wav-Datei.
     Im Windows-Lautstärkemixer steht „Cube Radar“ ab dem Start als eigene App, unabhängig von „Systemsounds“.
-  - Zoom, Größe (75–150 %) und Deckkraft
+  - Zoom, Größe (75–150 %) und Deckkraft, getrennt für das Radar und die Namensliste der Gegner darunter
   - Nordrichtung
   - „Nur wenn Aion 2 im Vordergrund“ und „In Menüs ausblenden“
   - Knöpfe: Position zurücksetzen, Web-Ansicht öffnen, Radar beenden

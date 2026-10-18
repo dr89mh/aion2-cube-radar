@@ -119,7 +119,7 @@ sichtbar, damit du es verschieben und zoomen kannst.
 - **Ton bei neuem Cube:** an/aus, „Testen“, Lautstärke (beim Verstellen hörst du den Ton) und optional eine
   eigene `.wav`-Datei statt des Standard-Pieptons. Im Windows-Lautstärkemixer steht „Cube Radar“ als eigene App
   und lässt sich dort zusätzlich regeln oder stummschalten.
-- **Overlay:** Zoom, Größe (75–150 %), Deckkraft.
+- **Overlay:** Zoom, Größe (75–150 %), Deckkraft für das Radar und – getrennt davon – für die Namensliste der Gegner darunter.
 - **Gegner:** Gegneranzeige an/aus, eigene Fraktion (Automatisch / Elyos / Asmodier).
 - **Norden:** Zeigt der Cube in eine andere Richtung als auf der Minimap im Spiel (gespiegelt oder um 90° gedreht),
   hier umstellen, bis es passt. Standard ist „−Y“.
