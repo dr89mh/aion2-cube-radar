@@ -42,7 +42,8 @@ internal sealed class SettingsForm : Form
     [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-    public SettingsForm(RadarSettings settings, OverlayActions actions, Action applied, Action resetPosition, Action confirmUpdate)
+    public SettingsForm(RadarSettings settings, OverlayActions actions, Action applied, Action resetPosition, Action confirmUpdate,
+        MinimapHeading? heading = null, Action? resetArrowPosition = null)
     {
         Text = "Cube Radar – Einstellungen";
         Icon = OverlayWindow.AppIcon();
@@ -145,6 +146,10 @@ internal sealed class SettingsForm : Form
 
         // ---- overlay look
         Section("Overlay");
+        var mode = Combo(OverlayWindow.Modes.Select(m => m.Text), Array.FindIndex(OverlayWindow.Modes, m => m.Value == settings.OverlayMode));
+        mode.Width = 200;
+        mode.SelectedIndexChanged += (_, _) => { settings.OverlayMode = OverlayWindow.Modes[mode.SelectedIndex].Value; Save(); };
+        Row("Anzeige", mode);
         var range = Combo(OverlayWindow.Ranges.Select(r => $"{r} m"), Array.IndexOf(OverlayWindow.Ranges, settings.OverlayRangeM));
         range.SelectedIndexChanged += (_, _) => { settings.OverlayRangeM = OverlayWindow.Ranges[range.SelectedIndex]; Save(); };
         Row("Zoom (auch Mausrad)", range);
@@ -172,8 +177,53 @@ internal sealed class SettingsForm : Form
         var north = Combo(Norths.Select(n => n.Text), Math.Max(0, Array.FindIndex(Norths, n => n.Value == actions.GetNorth())));
         north.SelectedIndexChanged += (_, _) => actions.SetNorth(Norths[north.SelectedIndex].Value);
         Row("Norden", north);
-        Full(new Label { Text = "Passt die Richtung nicht zur Minimap, hier umstellen (gilt auch für die Web-Ansicht).",
+        Full(new Label { Text = "Passt die Richtung nicht zur Minimap, hier umstellen (gilt auch für die Web-Ansicht und den Pfeil).",
             AutoSize = true, ForeColor = Muted, MaximumSize = new Size(420, 0), Margin = new Padding(0, 0, 0, 4) });
+
+        // ---- arrow over the character
+        Section("Pfeil über dem Charakter");
+        int[] arrowScales = [75, 100, 125, 150, 200];
+        var arrowScale = Combo(arrowScales.Select(s => $"{s} %"), Array.IndexOf(arrowScales, settings.ArrowScalePct));
+        arrowScale.SelectedIndexChanged += (_, _) => { settings.ArrowScalePct = arrowScales[arrowScale.SelectedIndex]; Save(); };
+        Row("Größe", arrowScale);
+        Opacity("Deckkraft Pfeil", settings.ArrowOpacityPct, v => settings.ArrowOpacityPct = v);
+        if (heading is not null)
+        {
+            var status = new Label { AutoSize = true, ForeColor = Muted, MaximumSize = new Size(420, 0), Margin = new Padding(0, 4, 0, 2),
+                Text = heading.Status };
+            var poll = new System.Windows.Forms.Timer { Interval = 300 };
+            var calibrating = false;
+            poll.Tick += (_, _) => { if (!calibrating) status.Text = heading.Status; };
+            poll.Start();
+            Disposed += (_, _) => poll.Dispose();
+            var find = Btn("Minimap suchen");
+            find.Click += async (_, _) =>
+            {
+                calibrating = true;
+                find.Enabled = false;
+                status.Text = "Suche die Minimap oben rechts …";
+                try
+                {
+                    status.Text = await heading.CalibrateAsync();
+                }
+                finally
+                {
+                    find.Enabled = true;
+                    await Task.Delay(4_000); // leave the result readable before the live status takes over again
+                    calibrating = false;
+                }
+            };
+            var standard = Btn("Standard-Lage");
+            standard.Click += (_, _) => { heading.ResetCalibration(); status.Text = "Minimap: Standard-Lage von Aion 2"; };
+            var resetArrow = Btn("Pfeil-Position zurücksetzen");
+            resetArrow.Click += (_, _) => resetArrowPosition?.Invoke();
+            Full(status);
+            Full(Flow(find, standard, resetArrow));
+        }
+        Full(new Label { Text = "Der Pfeil zeigt zum nächsten Cube. Wohin die Kamera schaut, liest Cube Radar am Sichtkegel der Minimap " +
+                                "oben rechts ab (nur Bildpunkte, wie bei einem Screenshot). Solange dieses Fenster offen ist, lässt sich " +
+                                "der Pfeil mit der Maus an die richtige Stelle ziehen; sonst gehen Klicks durch ihn hindurch.",
+            AutoSize = true, ForeColor = Muted, MaximumSize = new Size(420, 0), Margin = new Padding(0, 4, 0, 4) });
 
         // ---- visibility
         Section("Wann ist das Overlay sichtbar?");
@@ -257,6 +307,23 @@ internal sealed class SettingsForm : Form
         Full(bottom);
 
         Controls.Add(grid);
+        _content = grid;
+    }
+
+    private TableLayoutPanel? _content;
+
+    /// <summary>Taller than the screen (1080p, large DPI): fixed height with a scroll bar instead of buttons off-screen.</summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        var area = Screen.FromControl(this).WorkingArea;
+        if (_preview || _content is null || Height <= area.Height) return;
+        var width = Width + SystemInformation.VerticalScrollBarWidth;
+        AutoSize = false;
+        _content.Dock = DockStyle.Top;
+        AutoScroll = true;
+        Size = new Size(width, area.Height);
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top);
     }
 
     /// <summary>Renders the window to a PNG without showing it (for checking the layout).</summary>
@@ -265,7 +332,8 @@ internal sealed class SettingsForm : Form
         var t = new Thread(() =>
         {
             // Controls are only created when the window is shown: show it far off-screen, without taking the focus.
-            using var form = new SettingsForm(settings, actions, () => { }, () => { }, () => { })
+            using var heading = new MinimapHeading(settings);
+            using var form = new SettingsForm(settings, actions, () => { }, () => { }, () => { }, heading, () => { })
             {
                 StartPosition = FormStartPosition.Manual,
                 Location = new Point(-30_000, -30_000),

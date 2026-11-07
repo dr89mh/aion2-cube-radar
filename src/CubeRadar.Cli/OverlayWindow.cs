@@ -45,12 +45,22 @@ internal sealed class OverlayWindow : Form
     private bool _cursorByAlt;
     private NotifyIcon? _tray;
     private ToolStripMenuItem? _updateItem;
+    private readonly List<(ToolStripMenuItem Item, string Mode)> _modeItems = [];
+    private readonly MinimapHeading _heading;
+    private readonly ArrowWindow _arrow;
+
+    /// <summary>Display modes as stored in <see cref="RadarSettings.OverlayMode"/>, with their German names.</summary>
+    public static readonly (string Value, string Text)[] Modes =
+        [("radar", "Mini-Radar"), ("arrow", "Pfeil über dem Charakter"), ("both", "Radar und Pfeil")];
 
     public OverlayWindow(Func<RadarSnapshot> snapshot, RadarSettings settings, OverlayActions actions)
     {
         _snapshot = snapshot;
         _settings = settings;
         _actions = actions;
+        _heading = new MinimapHeading(settings);
+        _arrow = new ArrowWindow(settings, _heading, () => _last);
+        _ = _arrow.Handle;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         TopMost = true;
@@ -136,8 +146,19 @@ internal sealed class OverlayWindow : Form
     public void ApplySettings()
     {
         Size = OverlayRenderer.Measure(RenderScale, _settings.ShowEnemies);
+        foreach (var (item, mode) in _modeItems) item.Checked = mode == _settings.OverlayMode;
+        if (IsHandleCreated) UpdateVisibility(); // not from the constructor: the window is not placed yet
+        if (_arrow.Visible) _arrow.ApplySettings();
         Redraw();
     }
+
+    /// <summary>Radar, arrow or both (tray menu and settings).</summary>
+    public void SetMode(string mode) => Ui(() =>
+    {
+        _settings.OverlayMode = mode;
+        _settings.Save();
+        ApplySettings();
+    });
 
     /// <summary>
     /// Paints the overlay into a bitmap and hands it to Windows with per-pixel alpha (UpdateLayeredWindow), so the radar
@@ -176,8 +197,10 @@ internal sealed class OverlayWindow : Form
             _settingsForm.Activate();
             return;
         }
-        _settingsForm = new SettingsForm(_settings, _actions, ApplySettings, ResetPosition, ConfirmUpdate);
+        _settingsForm = new SettingsForm(_settings, _actions, ApplySettings, ResetPosition, ConfirmUpdate, _heading, _arrow.ResetPosition);
+        _settingsForm.FormClosed += (_, _) => UpdateVisibility(); // the arrow stops being draggable at once
         _settingsForm.Show();
+        UpdateVisibility();
     });
 
     /// <summary>Ctrl+Shift+F11: settings open (overlay visible to move and zoom it) or closed again.</summary>
@@ -234,6 +257,8 @@ internal sealed class OverlayWindow : Form
             _tray.Visible = false; // otherwise a dead icon stays in the tray until the mouse passes over it
             _tray.Dispose();
         }
+        _heading.Dispose();
+        _arrow.Close();
         Close();
         Application.ExitThread();
     });
@@ -247,6 +272,15 @@ internal sealed class OverlayWindow : Form
         menu.Items.Add(_updateItem);
         menu.Items.Add("Einstellungen … (Strg+Umschalt+F11)", null, (_, _) => OpenSettings());
         menu.Items.Add("Overlay ein/aus (Strg+Umschalt+F10)", null, (_, _) => ToggleVisible());
+        var modeMenu = new ToolStripMenuItem("Anzeige");
+        foreach (var (value, text) in Modes)
+        {
+            var item = new ToolStripMenuItem(text) { Checked = value == _settings.OverlayMode };
+            item.Click += (_, _) => SetMode(value);
+            modeMenu.DropDownItems.Add(item);
+            _modeItems.Add((item, value));
+        }
+        menu.Items.Add(modeMenu);
         menu.Items.Add("Zoom wechseln (Strg+Umschalt+F12)", null, (_, _) => CycleRange());
         menu.Items.Add("Web-Ansicht öffnen", null, (_, _) => _actions.OpenWeb());
         menu.Items.Add("Aufnahmen-Ordner öffnen", null, (_, _) => _actions.OpenCaptures());
@@ -342,16 +376,27 @@ internal sealed class OverlayWindow : Form
     private void Tick()
     {
         UpdateVisibility();
-        if (!Visible) return;
-        _last = _snapshot();
+        if (!Visible && !_arrow.Visible) return;
+        _last = _snapshot(); // the arrow draws from this one too (it only needs the camera direction more often)
         // Some games push themselves to the top when they regain focus: re-assert every 2 s.
-        if (++_ticks % 13 == 0) SetWindowPos(Handle, HwndTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
-        Redraw();
+        if (++_ticks % 13 == 0)
+        {
+            if (Visible) SetWindowPos(Handle, HwndTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+            if (_arrow.Visible) SetWindowPos(_arrow.Handle, HwndTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        }
+        if (Visible) Redraw();
     }
 
     private void UpdateVisibility()
     {
-        var show = _settings.OverlayVisible && (_moving || WantedOverGame());
+        var wanted = _settings.OverlayVisible && (_moving || WantedOverGame());
+        var arrow = wanted && _settings.ShowsArrow;
+        _heading.Active = arrow || SettingsOpen; // the settings show what the minimap reading sees
+        _arrow.Positioning = SettingsOpen;
+        if (arrow && _last is null) _last = _snapshot();
+        _arrow.SetShown(arrow);
+
+        var show = wanted && _settings.ShowsRadar;
         if (show == Visible) return;
         if (show)
         {
@@ -377,7 +422,7 @@ internal sealed class OverlayWindow : Form
         GetWindowThreadProcessId(GetForegroundWindow(), out var pid);
         // Our own window is in front (tray menu, a dialog): leave the overlay as it is. Showing it now would close the
         // tray menu that is just opening (right-click on the tray icon brings our process to the front).
-        if (pid == Environment.ProcessId) return Visible;
+        if (pid == Environment.ProcessId) return Visible || _arrow.Visible;
         if (!_gamePids.Contains((int)pid)) return !_settings.OverlayOnlyWhenGameFocused;
 
         if (!_settings.OverlayHideInMenus) return true;
@@ -733,10 +778,10 @@ internal static class OverlayRenderer
         }
     }
 
-    private sealed record MeView(double X, double Y, long AgeMs, double Ring);
+    internal sealed record MeView(double X, double Y, long AgeMs, double Ring);
 
     /// <summary>Our position: the later of real fix and ring estimate (as in the web UI).</summary>
-    private static MeView? Me(RadarSnapshot? s)
+    internal static MeView? Me(RadarSnapshot? s)
     {
         if (s is null) return null;
         if (s.Ring is { } r && (s.Self is null || r.TimeMs > s.Self.TimeMs)) return new MeView(r.X, r.Y, r.AgeMs, r.Uncertainty);

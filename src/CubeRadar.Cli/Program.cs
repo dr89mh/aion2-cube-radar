@@ -33,6 +33,7 @@ try
         "dump" when args.Length > 1 => DumpFile(args[1], args[2..], writeJsonl: true),
         "census" when args.Length > 1 => DumpFile(args[1], args[2..], writeJsonl: false),
         "radar" => RadarCommand.Run(args[1..], book, afterUpdate),
+        "minimap" => MinimapCommand.Run(args[1..]),
         "--version" => Print(DumpSession.Version),
         "--quit" => Quit(),
         _ => Usage(),
@@ -85,6 +86,8 @@ int Usage()
                                open, F12 range)
             --overlay-only     only the overlay: no browser, console hidden (log in the session folder);
                                tray icon to open the web view or quit
+        cuberadar minimap <png|folder> [options]   camera direction from the minimap's view cone on screenshots
+                                                   (arrow mode); --find, --center X,Y, --radius R, --arrow-png FILE
         cuberadar --quit                           ask the running radar to close (like "Beenden" in the tray)
         cuberadar --version                        print the version
 

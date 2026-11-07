@@ -32,6 +32,27 @@ internal sealed class RadarSettings
     public int OverlayOpacityPct { get; set; } = 90;
     /// <summary>Opacity of the enemy name list below the radar, 40–100 %; null (settings from before the split) = like the radar.</summary>
     public int? OverlayListOpacityPct { get; set; }
+    /// <summary>What the overlay shows: "radar" (the mini radar), "arrow" (a green arrow over the character) or "both".</summary>
+    public string OverlayMode { get; set; } = "radar";
+    /// <summary>Screen position of the arrow's centre; null = above the character (middle of the game window, 40 % down).</summary>
+    public int? ArrowX { get; set; }
+    public int? ArrowY { get; set; }
+    public int ArrowScalePct { get; set; } = 100;
+    /// <summary>Opacity of the arrow, 40–100 %.</summary>
+    public int ArrowOpacityPct { get; set; } = 90;
+    /// <summary>
+    /// Minimap centre (distance from the right and top edge of the game window) and radius, as fractions of the game
+    /// window height; null = AION 2's default layout (see MinimapHeading). Set by "Minimap suchen".
+    /// </summary>
+    public double? MinimapRight { get; set; }
+    public double? MinimapTop { get; set; }
+    public double? MinimapRadius { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ShowsRadar => OverlayMode != "arrow";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ShowsArrow => OverlayMode is "arrow" or "both";
     /// <summary>Sound when a new cube appears.</summary>
     public bool SoundEnabled { get; set; } = true;
     /// <summary>Optional .wav played instead of the beep.</summary>

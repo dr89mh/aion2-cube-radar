@@ -69,6 +69,28 @@ nur bei Ereignissen, etwa wenn du einen Buff wirkst oder angegriffen wirst.
 - `± 40 m`: Die Position ist nur geschätzt; der gepunktete Kreis um dich zeigt die Unsicherheit.
 - `Pos. ?` bzw. „eigene Position unbekannt“: **einmal einen Buff auf dich selbst wirken**, dann ist sie da.
 
+### Pfeil über dem Charakter
+
+Statt (oder zusätzlich zu) dem Mini-Radar kann ein **grüner Pfeil über deinem Charakter** zeigen, wohin du laufen
+musst. Umschalten unter **⚙ → Overlay → Anzeige** (Mini-Radar / Pfeil über dem Charakter / Radar und Pfeil) oder per
+Rechtsklick auf das Radar-Symbol → **Anzeige**.
+
+- Der Pfeil liegt wie ein Wegweiser flach in der Landschaft: **zeigt er nach oben (in den Bildschirm hinein), liegt
+  der Cube vor dir**, nach rechts heißt rechts von dir, nach unten hinter dir.
+- Darunter stehen Entfernung und Höhe (`86 m ▲38` = 38 m über dir). Unter 4 m zeigt ein pulsierender Ring „hier“.
+- Er zeigt zum nächsten sichtbaren Cube (oder einem, der gerade geöffnet wird); gibt es keinen, zum nächsten Cube
+  „außer Sicht“. Ohne Cube ist kein Pfeil zu sehen.
+- Farben wie im Radar: **grün** sichtbar, **orange** außer Sicht, **gelb** wird geöffnet. Blass mit orangem Hinweis
+  („Position 25 s alt“) heißt: Deine eigene Position ist alt oder geschätzt; ein Buff auf dich selbst hilft.
+- **Woher kennt er die Blickrichtung?** Das Spiel sendet sie nicht. Cube Radar liest sie am hellen **Sichtkegel der
+  Minimap** oben rechts ab, etwa 12-mal pro Sekunde, nur die Bildpunkte dieser Stelle (wie ein Screenshot). Ist die
+  Minimap verdeckt oder ausgeblendet (Menü, Ladebildschirm, große Karte), erscheint statt des Pfeils ein
+  grauer Kreis mit „?“ und „Minimap nicht erkannt“.
+- **Verschieben:** Solange die Einstellungen offen sind, zeigt der Pfeil einen gestrichelten Rahmen und lässt sich mit
+  der Maus an die richtige Stelle ziehen (Standard: über dem Kopf, Bildmitte). Sonst gehen Mausklicks durch ihn hindurch.
+- **Minimap woanders?** Bei geänderter Oberflächengröße in Aion 2 unter ⚙ → „Minimap suchen“ drücken, während die
+  Minimap im Spiel zu sehen ist. Die Zeile darüber zeigt live, ob der Sichtkegel erkannt wird.
+
 ## 4. Bedienen
 
 ### Gegneranzeige ab 0.9.0 (erste Testversion)
@@ -107,8 +129,8 @@ nur bei Ereignissen, etwa wenn du einen Buff wirkst oder angegriffen wirst.
 - Das Radar liegt immer im Vordergrund, nimmt dem Spiel aber nie den Fokus.
 
 **Rechtsklick auf das Radar-Symbol in der Taskleiste:**
-Einstellungen (auch per Doppelklick auf das Symbol), Overlay ein/aus, Zoom wechseln, Web-Ansicht öffnen,
-Aufnahmen-Ordner öffnen, Beenden.
+Einstellungen (auch per Doppelklick auf das Symbol), Overlay ein/aus, Anzeige (Mini-Radar / Pfeil / beides),
+Zoom wechseln, Web-Ansicht öffnen, Aufnahmen-Ordner öffnen, Beenden.
 
 ## 5. Einstellungen
 
@@ -119,7 +141,10 @@ sichtbar, damit du es verschieben und zoomen kannst.
 - **Ton bei neuem Cube:** an/aus, „Testen“, Lautstärke (beim Verstellen hörst du den Ton) und optional eine
   eigene `.wav`-Datei statt des Standard-Pieptons. Im Windows-Lautstärkemixer steht „Cube Radar“ als eigene App
   und lässt sich dort zusätzlich regeln oder stummschalten.
-- **Overlay:** Zoom, Größe (75–150 %), Deckkraft für das Radar und – getrennt davon – für die Namensliste der Gegner darunter.
+- **Overlay:** Anzeige (Mini-Radar, Pfeil über dem Charakter oder beides), Zoom, Größe (75–150 %), Deckkraft für das
+  Radar und – getrennt davon – für die Namensliste der Gegner darunter.
+- **Pfeil über dem Charakter:** Größe (75–200 %), Deckkraft, eine Live-Zeile zur Erkennung der Blickrichtung,
+  „Minimap suchen“, „Standard-Lage“ und „Pfeil-Position zurücksetzen“ (siehe [Pfeil](#pfeil-über-dem-charakter)).
 - **Gegner:** Gegneranzeige an/aus, eigene Fraktion (Automatisch / Elyos / Asmodier).
 - **Norden:** Zeigt der Cube in eine andere Richtung als auf der Minimap im Spiel (gespiegelt oder um 90° gedreht),
   hier umstellen, bis es passt. Standard ist „−Y“.
@@ -175,6 +200,9 @@ in diesem Fall 0.9.0 einmal manuell herunterladen und bei beendetem Radar ersetz
   „Als Administrator ausführen“.
 - **`Pos. ?` oder „eigene Position unbekannt“:** einen Buff auf dich selbst wirken.
 - **Richtung stimmt nicht:** Einstellungen → „Norden“ umstellen.
+- **Pfeil zeigt „?“ / „Minimap nicht erkannt“:** Ist die Minimap oben rechts zu sehen und nicht vom Radar-Overlay
+  verdeckt? Bei anderer Oberflächengröße ⚙ → „Minimap suchen“. Zeigt der Pfeil stur um 90° oder 180° daneben,
+  „Norden“ prüfen: Radar und Pfeil müssen zur Minimap passen.
 - **Kein Ton:** Einstellungen → „Ton abspielen“ an? „Testen“ drücken. Im Windows-Lautstärkemixer „Cube Radar“
   prüfen.
 - **Nach einem Spiel-Patch keine Cubes mehr:** Das Spiel hat vermutlich seine Paketnummern geändert. In der
