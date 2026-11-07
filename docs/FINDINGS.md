@@ -527,6 +527,21 @@ Shugo Station, Ellun River, dazwischen Menüs und Ladebildschirme). 2560×1440, 
   eigenen Thread, der Pfeil wird mit ~30 Hz gezeichnet und geglättet.
 - Live geprüft (Replay `20261013_114345` bei 200 s, Pfeil über dem Spiel): Kegel in Aullaeu Village erkannt
   (101°, Stärke 28), Pfeilfenster mittig auf 40 % Höhe über dem Charakter.
+- Feldtest 1 (2026-11-07, 26 min, Logger neben dem Release-Radar): Norden −Y bestätigt (91 % der Laufabschnitte
+  innerhalb ±35° der Kamera, Median 2°), Pfeil beim Anlauf auf einen Cube im Median 10° daneben, Kegel in 87 % der
+  Spielbilder erkannt, längere Aussetzer nur bei Ladebildschirmen.
+- Feldtest 2 (2026-11-07, ~2½ h, 4 Cubes, 2 selbst geöffnet, Pfeil 2–13° daneben): Kegel nur in 77 % erkannt, in
+  **Verteron (Karte 1010) nur 63 %**, in kleineren Gebieten 89–97 %. Gespeicherte Ausschnitte der Aussetzer zeigen: Der
+  Kegel wird in die richtige Richtung und mit passender Breite gefunden, nur sind seine Kanten auf dem hellen, gelben
+  Gelände blass (Stärke 4–12). Von 104 Aussetzern im Spiel hatten 99 die passende Breite, 76 eine Stärke ≥ 4.
+  Bilder mit offenem Mauszeiger (Menüs) lagen fast alle unter 2.
+- Daher `ViewConeTracker`: Schwache Kegel (Stärke ≥ 4, passende Breite) zählen, wenn sie höchstens 30° von der letzten
+  angenommenen Richtung abweichen und diese höchstens 1,5 s alt ist. Ohne laufende Spur starten 4 schwache Kegel mit
+  Stärke ≥ 9 innerhalb 1 s, die höchstens 6° auseinanderliegen, eine neue Spur. Auf der 167-Bilder-Aufnahme (mit Menüs
+  und Ladebildschirmen) nimmt die Regel nur 3 schwache Bilder zusätzlich an, alle passend zu den Nachbarbildern, und
+  keines ohne Minimap. Live (8,5 min Spiel, fast nur Verteron, Logger mit derselben Regel): erkannt 84 % → **92 %**,
+  Laufrichtung gegen Kamera in 96 % von 55 Abschnitten innerhalb ±35° (Median 2,8°). Bei ruhiger Kamera weichen
+  schwache Messungen im Median 3,6° (max. 7°) von den umliegenden sicheren ab.
 - Offen: Andere Oberflächengrößen und Seitenverhältnisse sind ungeprüft („Minimap suchen“ findet die Lage selbst);
   ob „Norden“ des Radars zur Minimap passt, zeigt sich am Pfeil (dreht er 90°/180° daneben, Norden umstellen).
 
@@ -681,3 +696,6 @@ Interaktionsreichweite (≈ 2 m, B7).
     oder geschätzter Position, „?“ ohne erkannte Minimap, Ring „hier“ unter 4 m. Klick-durchlässig, nur bei offenen
     Einstellungen verschiebbar.
   - Neu: `cuberadar minimap` (Erkennung an Screenshots prüfen, `--find`, `--arrow-png`), 10 synthetische Tests.
+- **2026-11-07 (Radar 0.10.1):** Pfeil-Modus erkennt die Minimap auch auf hellem Gelände.
+  - `ViewConeTracker` nimmt blasse Sichtkegel an, wenn sie an die letzte Richtung anschließen oder mehrere Bilder
+    übereinstimmen (M1, Feldtest 2). Verteron im Live-Vergleich 84 % → 92 % erkannt, 8 neue Tests.

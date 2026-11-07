@@ -28,6 +28,7 @@ internal sealed class MinimapHeading : IDisposable
     private readonly Thread _thread;
     private readonly AutoResetEvent _wake = new(false);
     private readonly LumaImage _luma = new(1, 1);
+    private readonly ViewConeTracker _tracker = new();
     private readonly object _captureGate = new();
     private byte[] _pixels = [];
     private volatile bool _disposed;
@@ -59,7 +60,7 @@ internal sealed class MinimapHeading : IDisposable
         }
     }
 
-    /// <summary>The last reliable reading, or null if there is none younger than <see cref="MaxAgeMs"/>.</summary>
+    /// <summary>The last accepted reading (see <see cref="ViewConeTracker"/>), or null if there is none younger than <see cref="MaxAgeMs"/>.</summary>
     public Reading? Current => _latest is { } r && Environment.TickCount64 - r.AtMs <= MaxAgeMs ? r : null;
 
     /// <summary>One line for the settings window.</summary>
@@ -104,10 +105,11 @@ internal sealed class MinimapHeading : IDisposable
             Grab(area);
             cone = ViewConeDetector.Detect(_luma, c.Cx - area.Left, c.Cy - area.Top, c.Radius);
         }
-        if (cone is { Reliable: true })
+        var now = Environment.TickCount64;
+        if (_tracker.Update(cone, now) is { } r)
         {
-            _latest = new Reading(cone.YawDeg, Environment.TickCount64, cone.Score);
-            _status = $"Blickrichtung {cone.YawDeg:0}° ({CubeRadar.Core.Radar.Orientation.Compass(cone.YawDeg)}), Sichtkegel erkannt (Stärke {cone.Score:0})";
+            _latest = new Reading(r.YawDeg, now, r.Score);
+            _status = $"Blickrichtung {r.YawDeg:0}° ({CubeRadar.Core.Radar.Orientation.Compass(r.YawDeg)}), Sichtkegel erkannt (Stärke {r.Score:0}{(r.Weak ? ", schwach, nachgeführt" : "")})";
         }
         else if (Current is null)
         {
